@@ -20,7 +20,7 @@
 <body>
 
 <?php
-require __DIR__ . '/vendor/autoload.php'; // Include Firebase autoload
+require __DIR__ . '/vendor/autoload.php'; //  Include Firebase autoload
 
 use Kreait\Firebase\Factory;
 
