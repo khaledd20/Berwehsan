@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "443736486269",
+    "firebase_url": "https://berwehsan-78e0d-default-rtdb.firebaseio.com",
+    "project_id": "berwehsan-78e0d",
+    "storage_bucket": "berwehsan-78e0d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:443736486269:android:f4256790620a9c2a7edc14",
+        "android_client_info": {
+          "package_name": "com.exampke.berwehsan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBN5BQ0X7rWYKnO3dLU5JKGoU8_00hrJzo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
