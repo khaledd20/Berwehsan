@@ -9,49 +9,43 @@ class InsertCase extends StatefulWidget {
 class _InsertCaseState extends State<InsertCase> {
   final _formKey = GlobalKey<FormState>();
 
-      final Map<String, dynamic> formData = {
-    'ID_Number': '',
-    'S_size': '0',
-    'age': '', // Storing age as String to avoid type mismatch
-    'area_id': '', // No numeric validation for this field
-    'balance': '0',
-    'c_size': '0',
-    'chest_id': '',
-    'created_at': '', // Auto-populated during insertion
-    'family_count': '', // Storing family_count as String to avoid type mismatch
-    'food_times': '0',
-    'grade_id': '',
-    'id': '', // New field for `id`, stored as String
-    'in_come': '',
-    'location': '',
-    'name': '',
-    'number': '',
-    'social_status': '',
-    'source': 'لا يوجد',
-    'status': 'مفعل',
-    'updated_at': '', // Auto-updated during insertion or edit
-  };
+  // Controllers for text fields
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
+  final TextEditingController socialStatusController = TextEditingController();
+  final TextEditingController incomeController = TextEditingController();
+  final TextEditingController familyCountController = TextEditingController();
+  final TextEditingController idNumberController = TextEditingController();
+  final TextEditingController numberController = TextEditingController();
+  final TextEditingController cSizeController = TextEditingController();
+  final TextEditingController sSizeController = TextEditingController();
+  final TextEditingController ageController = TextEditingController();
+  final TextEditingController gradeIdController = TextEditingController();
+  final TextEditingController balanceController = TextEditingController(); // New controller for `balance`
 
-    
-
-  String? selectedAreaId; // To store the currently selected area ID
-  List<Map<String, String>> areas = []; // List to hold fetched areas
+  String? selectedAreaId;
+  List<Map<String, dynamic>> areas = [];
+  List<Map<String, dynamic>> chests = [];
+  List<Map<String, dynamic>> subs = [];
+  List<int> selectedChestIds = [];
+  List<int> selectedSubIds = [];
 
   @override
   void initState() {
     super.initState();
-    fetchAreas(); // Fetch areas when the widget is initialized
+    fetchAreas();
+    fetchChests();
+    fetchSubs();
   }
 
-  /// Fetches areas from Firestore
   Future<void> fetchAreas() async {
     try {
       final areasSnapshot = await FirebaseFirestore.instance.collection('areas').get();
       setState(() {
         areas = areasSnapshot.docs.map((doc) {
           return {
-            'id': doc['id'].toString(), // Use the 'id' field inside the document
-            'name': doc['name'].toString(), // Use the 'name' field for display
+            'id': doc['id'],
+            'name': doc['name'].toString(),
           };
         }).toList();
       });
@@ -60,54 +54,99 @@ class _InsertCaseState extends State<InsertCase> {
     }
   }
 
-  Future<void> submitForm() async {
-  if (!_formKey.currentState!.validate()) return;
-
-  _formKey.currentState!.save();
-
-  // Add or update the necessary fields
-  try {
-    // Generate `created_at` and `updated_at` timestamps
-    formData['created_at'] = DateTime.now().toIso8601String();
-    formData['updated_at'] = DateTime.now().toIso8601String();
-
-    // Generate an auto-incrementing `id`
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('cases')
-        .orderBy('id', descending: true)
-        .limit(1)
-        .get();
-
-    int nextId = 1; // Default ID if no cases exist
-    if (querySnapshot.docs.isNotEmpty) {
-      final lastCase = querySnapshot.docs.first.data();
-      nextId = (lastCase['id'] != null ? int.parse(lastCase['id']) : 0) + 1;
+  Future<void> fetchChests() async {
+    try {
+      final chestsSnapshot = await FirebaseFirestore.instance.collection('chests').get();
+      setState(() {
+        chests = chestsSnapshot.docs.map((doc) {
+          return {
+            'id': doc['id'], // ID is expected to be a number
+            'name': doc['name'].toString(),
+          };
+        }).toList();
+      });
+    } catch (error) {
+      print('Error fetching chests: $error');
     }
-
-    // Add the `id` field to the formData
-    formData['id'] = nextId.toString(); // Ensure it's saved as a String
-
-    // Save the selected area's ID as it is
-    formData['area_id'] = selectedAreaId ?? '';
-
-    // Push form data to Firestore
-    final docRef = FirebaseFirestore.instance.collection('cases').doc();
-    await docRef.set(formData);
-
-    // Show success message and navigate back
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
-    );
-
-    Navigator.pop(context);
-  } catch (error) {
-    print('Error during submission: $error');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
-    );
   }
-}
 
+  Future<void> fetchSubs() async {
+    try {
+      final subsSnapshot = await FirebaseFirestore.instance.collection('subs').get();
+      setState(() {
+        subs = subsSnapshot.docs.map((doc) {
+          return {
+            'id': doc['id'], // ID is expected to be a number
+            'name': doc['name'].toString(),
+          };
+        }).toList();
+      });
+    } catch (error) {
+      print('Error fetching subs: $error');
+    }
+  }
+
+  Future<void> submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      // Collect all field values
+      final formData = {
+        'name': nameController.text,
+        'location': locationController.text,
+        'social_status': socialStatusController.text,
+        'in_come': int.tryParse(incomeController.text) ?? 0, // Convert to integer
+        'family_count': int.tryParse(familyCountController.text) ?? 0,
+        'ID_Number': idNumberController.text,
+        'number': numberController.text,
+        'c_size': cSizeController.text,
+        'S_size': sSizeController.text,
+        'age': int.tryParse(ageController.text) ?? 0,
+        'grade_id': gradeIdController.text ,
+        'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
+        'chest_ids': selectedChestIds, // Store as numbers
+        'sub_ids': selectedSubIds, // Store as numbers
+        'balance': int.tryParse(balanceController.text) ?? 0, // Parse and store as number
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'status': 'مفعل',
+      };
+
+      // Generate the smallest available ID starting from 1
+      int nextId = 1;
+      bool idExists = true;
+
+      while (idExists) {
+        final existingCase = await FirebaseFirestore.instance
+            .collection('cases')
+            .where('id', isEqualTo: nextId)
+            .get();
+
+        if (existingCase.docs.isEmpty) {
+          idExists = false; // ID is available
+        } else {
+          nextId++; // Check the next ID
+        }
+      }
+
+      formData['id'] = nextId;
+
+      // Save the data to Firestore
+      final docRef = FirebaseFirestore.instance.collection('cases').doc();
+      await docRef.set(formData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
+      );
+
+      Navigator.pop(context);
+    } catch (error) {
+      print('Error during submission: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,24 +157,27 @@ class _InsertCaseState extends State<InsertCase> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Directionality( // Ensure right-to-left directionality
+        child: Directionality(
           textDirection: TextDirection.rtl,
           child: Form(
             key: _formKey,
             child: ListView(
               children: [
-                buildTextField('الاسم', 'أدخل الاسم', 'name'),
-                buildTextField('العنوان', 'أدخل العنوان', 'location'),
-                buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية', 'social_status'),
-                buildTextField('الدخل', 'أدخل الدخل', 'in_come', inputType: TextInputType.number),
-                buildTextField('عدد أعضاء الأسرة', 'أدخل عدد أعضاء الأسرة', 'family_count', inputType: TextInputType.number),
-                buildTextField('الرقم القومي', 'أدخل الرقم القومي', 'ID_Number'),
-                buildTextField('رقم هاتف', 'أدخل رقم الهاتف', 'number', inputType: TextInputType.phone),
-                buildTextField('مقاس الملابس', 'أدخل مقاس الملابس', 'c_size'),
-                buildTextField('مقاس جهاز العوسة', 'أدخل مقاس جهاز العوسة', 'S_size'),
-                buildTextField('العمر', 'أدخل العمر', 'age', inputType: TextInputType.number),
-                buildAreaDropdown(), // Dropdown for areas
-                buildTextField(' المرحلة الدراسية', 'أدخل المرحلة الدراسية', 'grade_id', inputType: TextInputType.number),
+                buildTextField('الاسم', 'أدخل الاسم', nameController),
+                buildTextField('العنوان', 'أدخل العنوان', locationController),
+                buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية', socialStatusController),
+                buildTextField('الدخل', 'أدخل الدخل', incomeController, inputType: TextInputType.number),
+                buildTextField('عدد أعضاء الأسرة', 'أدخل عدد أعضاء الأسرة', familyCountController, inputType: TextInputType.number),
+                buildTextField('الرقم القومي', 'أدخل الرقم القومي', idNumberController),
+                buildTextField('رقم هاتف', 'أدخل رقم الهاتف', numberController, inputType: TextInputType.phone),
+                buildTextField('مقاس الملابس', 'أدخل مقاس الملابس', cSizeController),
+                buildTextField('مقاس جهاز العوسة', 'أدخل مقاس جهاز العوسة', sSizeController),
+                buildTextField('العمر', 'أدخل العمر', ageController, inputType: TextInputType.number),
+                buildTextField('القبض', 'أدخل القبض', balanceController, inputType: TextInputType.number), // New balance field
+                buildAreaDropdown(),
+                buildMultiSelectDropdown('اختر الصناديق', chests, selectedChestIds),
+                buildMultiSelectDropdown('اختر المشتركين', subs, selectedSubIds),
+                buildTextField('المرحلة الدراسية', 'أدخل المرحلة الدراسية', gradeIdController),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -160,7 +202,23 @@ class _InsertCaseState extends State<InsertCase> {
     );
   }
 
-  /// Builds a dropdown for selecting an area
+  Widget buildTextField(String label, String hint, TextEditingController controller, {TextInputType inputType = TextInputType.text}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        textDirection: TextDirection.rtl,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: const OutlineInputBorder(),
+        ),
+        keyboardType: inputType,
+        validator: (value) => value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
+      ),
+    );
+  }
+
   Widget buildAreaDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -168,8 +226,8 @@ class _InsertCaseState extends State<InsertCase> {
         value: selectedAreaId,
         items: areas.map((area) {
           return DropdownMenuItem<String>(
-            value: area['id'], // Use area ID as value
-            child: Text(area['name'] ?? ''), // Display area name
+            value: area['id'].toString(),
+            child: Text(area['name'] ?? ''),
           );
         }).toList(),
         decoration: const InputDecoration(
@@ -179,28 +237,37 @@ class _InsertCaseState extends State<InsertCase> {
         validator: (value) => value == null || value.isEmpty ? 'يرجى اختيار المنطقة' : null,
         onChanged: (value) {
           setState(() {
-            selectedAreaId = value; // Save the selected area's ID
+            selectedAreaId = value;
           });
         },
       ),
     );
   }
 
-  Widget buildTextField(String label, String hint, String key,
-      {TextInputType inputType = TextInputType.text}) {
+  Widget buildMultiSelectDropdown(String label, List<Map<String, dynamic>> items, List<int> selectedItems) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        textDirection: TextDirection.rtl, // Align text to the right
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: const OutlineInputBorder(),
+      child: Card(
+        child: Column(
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ...items.map((item) {
+              return CheckboxListTile(
+                value: selectedItems.contains(item['id']),
+                title: Text(item['name'] ?? ''),
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      selectedItems.add(item['id']);
+                    } else {
+                      selectedItems.remove(item['id']);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ],
         ),
-        keyboardType: inputType,
-        validator: (value) =>
-            value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
-        onSaved: (value) => formData[key] = value!,
       ),
     );
   }

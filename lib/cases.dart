@@ -102,7 +102,7 @@ class _CasesPageState extends State<CasesPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => CaseProfile(caseId: docId),
+                                builder: (context) => CaseProfile(caseId: int.parse(caseData['id'].toString())),
                               ),
                             );
                           },
