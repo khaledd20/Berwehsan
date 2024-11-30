@@ -1,13 +1,18 @@
-import 'package:berwehsan/cases.dart';
-import 'package:berwehsan/chests.dart';
-import 'package:berwehsan/insertCase.dart';
+import 'package:berwehsan/admin/items/addItem.dart';
+import 'package:berwehsan/admin/cases.dart';
+import 'package:berwehsan/admin/chests.dart';
+import 'package:berwehsan/admin/insertCase.dart';
+import 'package:berwehsan/admin/items/historyItem.dart';
+import 'package:berwehsan/admin/items/viewItems.dart';
 import 'package:berwehsan/login.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:intl/date_symbol_data_local.dart'; // For locale initialization
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ar', null);
 
   // Initialize Firebase with web-specific configuration
   await Firebase.initializeApp(
@@ -38,7 +43,7 @@ class MyApp extends StatelessWidget {
       ),
       builder: EasyLoading.init(), // تهيئة EasyLoading
 
-      home:  CasesPage(), // Default home page set to ChestsPage
+      home:  HistoryItemPage(), // Default home page set to ChestsPage
     );
   }
 }

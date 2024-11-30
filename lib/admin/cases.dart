@@ -1,3 +1,4 @@
+import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'caseProfile.dart';
@@ -40,6 +41,7 @@ class _CasesPageState extends State<CasesPage> {
             ),
           ),
         ),
+        drawer: AdminDrawer(), // Add the drawer here
         body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('cases').orderBy('id').snapshots(),
           builder: (context, snapshot) {

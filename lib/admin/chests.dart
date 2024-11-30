@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/admin_drawer.dart'; // Import the drawer widget
 
 class ChestsPage extends StatelessWidget {
   const ChestsPage({super.key});
@@ -13,6 +14,7 @@ class ChestsPage extends StatelessWidget {
           title: const Text('جميع الصناديق'),
           centerTitle: true,
         ),
+        drawer: AdminDrawer(), // Add the drawer here
         floatingActionButton: FloatingActionButton(
           onPressed: () => _addChest(context),
           child: const Icon(Icons.add),
