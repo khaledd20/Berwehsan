@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
       ),
       builder: EasyLoading.init(), // تهيئة EasyLoading
 
-      home:  HistoryItemPage(), // Default home page set to ChestsPage
+      home:  LoginScreenWeb(), // Default home page set to ChestsPage
     );
   }
 }

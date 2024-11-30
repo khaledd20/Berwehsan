@@ -1,3 +1,4 @@
+import 'package:berwehsan/admin/items/historyItem.dart';
 import 'package:flutter/material.dart';
 import '../admin/items/viewItems.dart';
 import '../admin/cases.dart';
@@ -31,6 +32,16 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => ViewItemsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.storefront_rounded),
+              title: const Text('سجل المخزن'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => HistoryItemPage()),
                 );
               },
             ),
