@@ -1,8 +1,11 @@
+import 'package:berwehsan/admin/UserControl.dart';
+import 'package:berwehsan/admin/area.dart';
+import 'package:berwehsan/admin/chests.dart';
 import 'package:berwehsan/admin/items/historyItem.dart';
+import 'package:berwehsan/admin/sub.dart';
 import 'package:flutter/material.dart';
 import '../admin/items/viewItems.dart';
 import '../admin/cases.dart';
-import '../admin/chests.dart';
 import '../admin/insertCase.dart';
 import '../login.dart';
 
@@ -62,6 +65,36 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => ChestsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder),
+              title: const Text('الكفالة'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => SubsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('المناطق'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => AreasPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('عنصر تحكم المستخدم'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => UserControlPage()),
                 );
               },
             ),

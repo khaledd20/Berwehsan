@@ -1,31 +1,28 @@
-import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'widgets/admin_drawer.dart'; // Ensure you have this widget
 
-class ChestsPage extends StatelessWidget {
-  const ChestsPage({super.key});
+class AreasPage extends StatelessWidget {
+  const AreasPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Set everything to right alignment
+      textDirection: TextDirection.rtl, // Right-to-left alignment
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('جميع الصناديق'),
+          title: const Text('جميع المناطق'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(), // Add the menu bar (drawer)
         floatingActionButton: FloatingActionButton(
-          onPressed: () => _addChest(context),
+          onPressed: () => _addArea(context),
           child: const Icon(Icons.add),
-          tooltip: 'إضافة صندوق',
+          tooltip: 'إضافة منطقة',
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('chests')
+                .collection('areas')
                 .orderBy('id')
                 .snapshots(),
             builder: (context, snapshot) {
@@ -42,13 +39,13 @@ class ChestsPage extends StatelessWidget {
                 );
               }
 
-              final chests = snapshot.data!.docs;
+              final areas = snapshot.data!.docs;
 
               return ListView.builder(
-                itemCount: chests.length,
+                itemCount: areas.length,
                 itemBuilder: (context, index) {
-                  final chest = chests[index].data() as Map<String, dynamic>;
-                  final docId = chests[index].id;
+                  final area = areas[index].data() as Map<String, dynamic>;
+                  final docId = areas[index].id;
 
                   return Card(
                     elevation: 3,
@@ -59,18 +56,16 @@ class ChestsPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'الصندوق: ${chest['name'] ?? 'غير معروف'}',
+                            'المنطقة: ${area['name'] ?? 'غير معروف'}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          Text('المعرف: ${chest['id'] ?? 'غير معروف'}'),
-                          Text(
-                              'الرصيد: ${chest['balance']?.toString() ?? '0'}'),
-                          Text('id: ${chest['id']?.toString() ?? '0'}'),
+                          Text('المعرف: ${area['id'] ?? 'غير معروف'}'),
+                          Text('الوصف: ${area['description'] ?? 'غير معروف'}'),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               TextButton(
-                                onPressed: () => _deleteChest(context, docId),
+                                onPressed: () => _deleteArea(context, docId),
                                 child: const Text(
                                   'حذف',
                                   style: TextStyle(color: Colors.red),
@@ -78,7 +73,7 @@ class ChestsPage extends StatelessWidget {
                               ),
                               TextButton(
                                 onPressed: () =>
-                                    _editChest(context, docId, chest),
+                                    _editArea(context, docId, area),
                                 child: const Text(
                                   'تعديل',
                                   style: TextStyle(color: Colors.blue),
@@ -86,7 +81,7 @@ class ChestsPage extends StatelessWidget {
                               ),
                               TextButton(
                                 onPressed: () =>
-                                    _viewCases(context, chest['id']),
+                                    _viewCases(context, area['id']),
                                 child: const Text(
                                   'عرض الحالات',
                                   style: TextStyle(color: Colors.green),
@@ -107,20 +102,18 @@ class ChestsPage extends StatelessWidget {
     );
   }
 
-  // Function to Navigate to Cases Page
-  void _viewCases(BuildContext context, int chestId) {
+  void _viewCases(BuildContext context, int areaId) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CasesForChestPage(chestId: chestId),
+        builder: (context) => CasesForAreaPage(areaId: areaId),
       ),
     );
   }
 
-  Future<void> _addChest(BuildContext context) async {
+  Future<void> _addArea(BuildContext context) async {
     final nameController = TextEditingController();
-    final balanceController = TextEditingController();
-    final shareController = TextEditingController();
+    final descriptionController = TextEditingController();
 
     await showDialog(
       context: context,
@@ -128,23 +121,17 @@ class ChestsPage extends StatelessWidget {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            title: const Text('إضافة صندوق جديد'),
+            title: const Text('إضافة منطقة جديدة'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'اسم الصندوق'),
+                  decoration: const InputDecoration(labelText: 'اسم المنطقة'),
                 ),
                 TextField(
-                  controller: balanceController,
-                  decoration: const InputDecoration(labelText: 'الرصيد'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: shareController,
-                  decoration: const InputDecoration(labelText: 'id'),
-                  keyboardType: TextInputType.number,
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'الوصف'),
                 ),
               ],
             ),
@@ -156,35 +143,30 @@ class ChestsPage extends StatelessWidget {
               ElevatedButton(
                 onPressed: () async {
                   if (nameController.text.isNotEmpty &&
-                      balanceController.text.isNotEmpty &&
-                      shareController.text.isNotEmpty) {
+                      descriptionController.text.isNotEmpty) {
                     try {
-                      // Fetch the last chest to determine the next ID
                       final querySnapshot = await FirebaseFirestore.instance
-                          .collection('chests')
+                          .collection('areas')
                           .orderBy('id', descending: true)
                           .limit(1)
                           .get();
 
-                      int nextId = 1; // Default ID if no chests exist
+                      int nextId = 1;
                       if (querySnapshot.docs.isNotEmpty) {
-                        final lastChest = querySnapshot.docs.first.data();
-                        nextId = (lastChest['id'] ?? 0) + 1;
+                        final lastArea = querySnapshot.docs.first.data();
+                        nextId = (lastArea['id'] ?? 0) + 1;
                       }
 
-                      await FirebaseFirestore.instance
-                          .collection('chests')
-                          .add({
+                      await FirebaseFirestore.instance.collection('areas').add({
                         'name': nameController.text,
-                        'balance': int.parse(balanceController.text),
-                        'share': int.parse(shareController.text),
+                        'description': descriptionController.text,
                         'created_at': DateTime.now().toIso8601String(),
                         'updated_at': DateTime.now().toIso8601String(),
                         'id': nextId,
                       });
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم إضافة الصندوق بنجاح')),
+                        const SnackBar(content: Text('تم إضافة المنطقة بنجاح')),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -206,20 +188,18 @@ class ChestsPage extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteChest(BuildContext context, String docId) async {
-    await FirebaseFirestore.instance.collection('chests').doc(docId).delete();
+  Future<void> _deleteArea(BuildContext context, String docId) async {
+    await FirebaseFirestore.instance.collection('areas').doc(docId).delete();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حذف الصندوق بنجاح')),
+      const SnackBar(content: Text('تم حذف المنطقة بنجاح')),
     );
   }
 
-  Future<void> _editChest(
-      BuildContext context, String docId, Map<String, dynamic> chest) async {
-    final nameController = TextEditingController(text: chest['name']);
-    final balanceController =
-        TextEditingController(text: chest['balance'].toString());
-    final shareController =
-        TextEditingController(text: chest['share'].toString());
+  Future<void> _editArea(
+      BuildContext context, String docId, Map<String, dynamic> area) async {
+    final nameController = TextEditingController(text: area['name']);
+    final descriptionController =
+        TextEditingController(text: area['description']);
 
     await showDialog(
       context: context,
@@ -227,23 +207,17 @@ class ChestsPage extends StatelessWidget {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            title: const Text('تعديل الصندوق'),
+            title: const Text('تعديل المنطقة'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'اسم الصندوق'),
+                  decoration: const InputDecoration(labelText: 'اسم المنطقة'),
                 ),
                 TextField(
-                  controller: balanceController,
-                  decoration: const InputDecoration(labelText: 'الرصيد'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: shareController,
-                  decoration: const InputDecoration(labelText: 'id'),
-                  keyboardType: TextInputType.number,
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'الوصف'),
                 ),
               ],
             ),
@@ -255,17 +229,16 @@ class ChestsPage extends StatelessWidget {
               ElevatedButton(
                 onPressed: () async {
                   await FirebaseFirestore.instance
-                      .collection('chests')
+                      .collection('areas')
                       .doc(docId)
                       .update({
                     'name': nameController.text,
-                    'balance': int.parse(balanceController.text),
-                    'share': int.parse(shareController.text),
+                    'description': descriptionController.text,
                     'updated_at': DateTime.now().toIso8601String(),
                   });
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم تعديل الصندوق بنجاح')),
+                    const SnackBar(content: Text('تم تعديل المنطقة بنجاح')),
                   );
                 },
                 child: const Text('تعديل'),
@@ -278,23 +251,24 @@ class ChestsPage extends StatelessWidget {
   }
 }
 
-// CasesForChestPage Widget
-class CasesForChestPage extends StatelessWidget {
-  final int chestId;
+// Define the CasesForAreaPage class
+class CasesForAreaPage extends StatelessWidget {
+  final int areaId;
 
-  const CasesForChestPage({super.key, required this.chestId});
+  const CasesForAreaPage({super.key, required this.areaId});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('الحالات للصندوق $chestId'),
+        title: Text('الحالات للمنطقة $areaId'),
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('cases')
-            .where('chest_ids', arrayContains: chestId)
+            .where('area_id',
+                isEqualTo: areaId) // Ensure area_id is queried as an integer
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -304,7 +278,7 @@ class CasesForChestPage extends StatelessWidget {
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(
               child: Text(
-                'لا توجد حالات لهذا الصندوق',
+                'لا توجد حالات لهذه المنطقة',
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
             );

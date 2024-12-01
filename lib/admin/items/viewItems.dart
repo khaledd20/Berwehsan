@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui; // Import for ui.TextDirection.
-  import 'dart:html' as html;
+import 'dart:html' as html;
 
 class ViewItemsPage extends StatefulWidget {
   @override
@@ -38,7 +38,8 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
           children: [
             // Name Filter
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: TextField(
                 textAlign: TextAlign.right,
                 decoration: const InputDecoration(
@@ -55,7 +56,8 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
             ),
             // Note Filter
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: TextField(
                 textAlign: TextAlign.right,
                 decoration: const InputDecoration(
@@ -72,13 +74,15 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
             ),
             Expanded(
               child: StreamBuilder(
-                stream: FirebaseFirestore.instance.collection('items').snapshots(),
+                stream:
+                    FirebaseFirestore.instance.collection('items').snapshots(),
                 builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final items = snapshot.data!.docs.where((item) {
-                    final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
+                    final Map<String, dynamic> data =
+                        item.data() as Map<String, dynamic>;
                     final String name = data['name'] ?? '';
                     final String note = data['note'] ?? '';
 
@@ -92,15 +96,18 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
-                      final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
+                      final Map<String, dynamic> data =
+                          item.data() as Map<String, dynamic>;
                       final String countText = 'العدد الحالي: ${data['count']}';
-                      final String note = data.containsKey('note') && data['note'] != null
-                          ? data['note']
-                          : 'لا توجد ملاحظات';
+                      final String note =
+                          data.containsKey('note') && data['note'] != null
+                              ? data['note']
+                              : 'لا توجد ملاحظات';
 
                       return Card(
                         elevation: 3,
-                        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 8.0, horizontal: 16.0),
                         child: ListTile(
                           title: Text(
                             data['name'],
@@ -114,31 +121,36 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.storage, color: Colors.orange),
+                                icon: const Icon(Icons.storage,
+                                    color: Colors.orange),
                                 onPressed: () {
                                   // Navigate to item details page
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => ItemDetailsPage(itemId: item.id),
+                                      builder: (context) =>
+                                          ItemDetailsPage(itemId: item.id),
                                     ),
                                   );
                                 },
                               ),
                               IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                icon:
+                                    const Icon(Icons.edit, color: Colors.blue),
                                 onPressed: () {
                                   // Navigate to edit item page
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => EditItemPage(itemId: item.id),
+                                      builder: (context) =>
+                                          EditItemPage(itemId: item.id),
                                     ),
                                   );
                                 },
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () {
                                   // Confirm and delete item
                                   _confirmDelete(context, item.id);
@@ -169,57 +181,55 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
     );
   }
 
-
   void _printItems() async {
-  final snapshot = await FirebaseFirestore.instance.collection('items').get();
-  final filteredItems = snapshot.docs.where((item) {
-    final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
-    final String name = data['name'] ?? '';
-    final String note = data['note'] ?? '';
+    final snapshot = await FirebaseFirestore.instance.collection('items').get();
+    final filteredItems = snapshot.docs.where((item) {
+      final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
+      final String name = data['name'] ?? '';
+      final String note = data['note'] ?? '';
 
-    // Apply filters
-    final matchesName = name.contains(nameFilter);
-    final matchesNote = note.contains(noteFilter);
-    return matchesName && matchesNote;
-  }).toList();
+      // Apply filters
+      final matchesName = name.contains(nameFilter);
+      final matchesNote = note.contains(noteFilter);
+      return matchesName && matchesNote;
+    }).toList();
 
-  final date = DateFormat('dd MMMM yyyy', 'ar').format(DateTime.now());
-  final StringBuffer buffer = StringBuffer();
+    final date = DateFormat('dd MMMM yyyy', 'ar').format(DateTime.now());
+    final StringBuffer buffer = StringBuffer();
 
-  // Add UTF-8 encoding to the HTML
-  buffer.writeln('<html>');
-  buffer.writeln('<head>');
-  buffer.writeln('<meta charset="UTF-8">'); // Ensure proper encoding
-  buffer.writeln('<title>طباعة العناصر</title>');
-  buffer.writeln('</head>');
-  buffer.writeln('<body style="direction: rtl; font-family: Arial, sans-serif;">');
-  buffer.writeln('<h2>التاريخ: $date</h2>');
-  buffer.writeln('<h3>العناصر:</h3>');
+    // Add UTF-8 encoding to the HTML
+    buffer.writeln('<html>');
+    buffer.writeln('<head>');
+    buffer.writeln('<meta charset="UTF-8">'); // Ensure proper encoding
+    buffer.writeln('<title>طباعة العناصر</title>');
+    buffer.writeln('</head>');
+    buffer.writeln(
+        '<body style="direction: rtl; font-family: Arial, sans-serif;">');
+    buffer.writeln('<h2>التاريخ: $date</h2>');
+    buffer.writeln('<h3>العناصر:</h3>');
 
-  for (final item in filteredItems) {
-    final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
-    final String name = data['name'];
-    final int count = data['count'];
-    final String note = data.containsKey('note') && data['note'] != null
-        ? data['note']
-        : 'لا توجد ملاحظات';
+    for (final item in filteredItems) {
+      final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
+      final String name = data['name'];
+      final int count = data['count'];
+      final String note = data.containsKey('note') && data['note'] != null
+          ? data['note']
+          : 'لا توجد ملاحظات';
 
-    buffer.writeln('<p><strong>الاسم:</strong> $name</p>');
-    buffer.writeln('<p><strong>العدد:</strong> $count</p>');
-    buffer.writeln('<p><strong>ملاحظات:</strong> $note</p>');
-    buffer.writeln('<hr>');
+      buffer.writeln('<p><strong>الاسم:</strong> $name</p>');
+      buffer.writeln('<p><strong>العدد:</strong> $count</p>');
+      buffer.writeln('<p><strong>ملاحظات:</strong> $note</p>');
+      buffer.writeln('<hr>');
+    }
+
+    buffer.writeln('</body>');
+    buffer.writeln('</html>');
+
+    final html.Blob blob = html.Blob([buffer.toString()], 'text/html');
+    final String url = html.Url.createObjectUrlFromBlob(blob);
+    html.window.open(url, '_blank'); // Open in a new tab
+    html.Url.revokeObjectUrl(url);
   }
-
-  buffer.writeln('</body>');
-  buffer.writeln('</html>');
-
-  final html.Blob blob = html.Blob([buffer.toString()], 'text/html');
-  final String url = html.Url.createObjectUrlFromBlob(blob);
-  html.window.open(url, '_blank'); // Open in a new tab
-  html.Url.revokeObjectUrl(url);
-}
-
-
 
   void _confirmDelete(BuildContext context, String itemId) {
     showDialog(
@@ -235,7 +245,10 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
             ),
             TextButton(
               onPressed: () {
-                FirebaseFirestore.instance.collection('items').doc(itemId).delete();
+                FirebaseFirestore.instance
+                    .collection('items')
+                    .doc(itemId)
+                    .delete();
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('تم حذف العنصر بنجاح!')),
