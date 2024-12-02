@@ -1,9 +1,9 @@
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AdminChestsPage extends StatelessWidget {
-  const AdminChestsPage({super.key});
+class ChestsPageModerator extends StatelessWidget {
+  const ChestsPageModerator({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +14,7 @@ class AdminChestsPage extends StatelessWidget {
           title: const Text('جميع الصناديق'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(), // Add the menu bar (drawer)
+        drawer: ModeratorDrawer(), // Add the menu bar (drawer)
         floatingActionButton: FloatingActionButton(
           onPressed: () => _addChest(context),
           child: const Icon(Icons.add),
@@ -68,13 +68,6 @@ class AdminChestsPage extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              TextButton(
-                                onPressed: () => _deleteChest(context, docId),
-                                child: const Text(
-                                  'حذف',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
                               TextButton(
                                 onPressed: () =>
                                     _editChest(context, docId, chest),
@@ -205,13 +198,6 @@ class AdminChestsPage extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteChest(BuildContext context, String docId) async {
-    await FirebaseFirestore.instance.collection('chests').doc(docId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حذف الصندوق بنجاح')),
-    );
-  }
-
   Future<void> _editChest(
       BuildContext context, String docId, Map<String, dynamic> chest) async {
     final nameController = TextEditingController(text: chest['name']);
@@ -285,7 +271,7 @@ class CasesForChestPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Set direction to Right-to-Left
+      textDirection: TextDirection.rtl, // Set the direction to Right-to-Left
       child: Scaffold(
         appBar: AppBar(
           title: Text('الحالات للصندوق $chestId'),
@@ -306,7 +292,6 @@ class CasesForChestPage extends StatelessWidget {
                 child: Text(
                   'لا توجد حالات لهذا الصندوق',
                   style: TextStyle(fontSize: 18, color: Colors.grey),
-                  textAlign: TextAlign.center, // Center-align the text
                 ),
               );
             }
@@ -324,27 +309,15 @@ class CasesForChestPage extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start, // Align text to the right
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'الحالة: ${caseData['name'] ?? 'غير معروف'}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
-                          textAlign:
-                              TextAlign.right, // Align each field to the right
                         ),
-                        Text(
-                          'رقم الحالة: ${caseData['id'] ?? 'غير معروف'}',
-                          textAlign: TextAlign.right,
-                        ),
-                        Text(
-                          'العنوان: ${caseData['location'] ?? 'غير معروف'}',
-                          textAlign: TextAlign.right,
-                        ),
-                        Text(
-                          'الرقم: ${caseData['number'] ?? 'غير معروف'}',
-                          textAlign: TextAlign.right,
-                        ),
+                        Text('رقم الحالة: ${caseData['id'] ?? 'غير معروف'}'),
+                        Text('العنوان: ${caseData['location'] ?? 'غير معروف'}'),
+                        Text('الرقم: ${caseData['number'] ?? 'غير معروف'}'),
                       ],
                     ),
                   ),

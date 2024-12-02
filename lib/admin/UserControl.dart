@@ -1,3 +1,4 @@
+import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -20,102 +21,106 @@ class _UserControlPageState extends State<UserControlPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إدارة المستخدمين'),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Form Section
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  // Full Name
-                  TextFormField(
-                    controller: _fullNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم الكامل',
-                      border: OutlineInputBorder(),
+    return Directionality(
+      textDirection: TextDirection.rtl, // Set Right-to-Left alignment
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('إدارة المستخدمين'),
+          centerTitle: true,
+        ),
+        drawer: AdminDrawer(), // Add the AdminDrawer here
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Form Section
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Full Name
+                    TextFormField(
+                      controller: _fullNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'الاسم الكامل',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'الرجاء إدخال الاسم الكامل';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'الرجاء إدخال الاسم الكامل';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  // Email
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'البريد الإلكتروني',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 10),
+                    // Email
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'البريد الإلكتروني',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'الرجاء إدخال البريد الإلكتروني';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'الرجاء إدخال البريد الإلكتروني';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  // Password
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'كلمة المرور',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 10),
+                    // Password
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'كلمة المرور',
+                        border: OutlineInputBorder(),
+                      ),
+                      obscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'الرجاء إدخال كلمة المرور';
+                        }
+                        return null;
+                      },
                     ),
-                    obscureText: true,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'الرجاء إدخال كلمة المرور';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  // Role
-                  TextFormField(
-                    controller: _roleController,
-                    decoration: const InputDecoration(
-                      labelText: 'الدور',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 10),
+                    // Role
+                    TextFormField(
+                      controller: _roleController,
+                      decoration: const InputDecoration(
+                        labelText: 'الدور',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'الرجاء إدخال الدور';
+                        }
+                        return null;
+                      },
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'الرجاء إدخال الدور';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  // Add/Edit Button
-                  ElevatedButton(
-                    onPressed: () {
-                      if (isEdit) {
-                        _editUser();
-                      } else {
-                        _addUser();
-                      }
-                    },
-                    child: Text(isEdit ? 'تعديل المستخدم' : 'إضافة المستخدم'),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    // Add/Edit Button
+                    ElevatedButton(
+                      onPressed: () {
+                        if (isEdit) {
+                          _editUser();
+                        } else {
+                          _addUser();
+                        }
+                      },
+                      child: Text(isEdit ? 'تعديل المستخدم' : 'إضافة المستخدم'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            // List of Users
-            Expanded(
-              child: _buildUserList(),
-            ),
-          ],
+              const SizedBox(height: 20),
+              // List of Users
+              Expanded(
+                child: _buildUserList(),
+              ),
+            ],
+          ),
         ),
       ),
     );

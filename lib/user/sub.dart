@@ -1,5 +1,5 @@
-import 'package:berwehsan/admin/insertSub.dart';
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/user/insertSub.dart';
+import 'package:berwehsan/widgets/user_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -35,25 +35,6 @@ class _SubsPageState extends State<SubsPage> {
       });
     } catch (error) {
       print('Error fetching subs: $error');
-    }
-  }
-
-  Future<void> deleteSub(String id) async {
-    try {
-      await FirebaseFirestore.instance.collection('subs').doc(id).delete();
-      if (!mounted) return;
-
-      fetchSubs();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف الكفالة بنجاح')),
-      );
-    } catch (error) {
-      print('Error deleting sub: $error');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ أثناء حذف الكفالة: $error')),
-        );
-      }
     }
   }
 
@@ -130,6 +111,15 @@ class _SubsPageState extends State<SubsPage> {
     );
   }
 
+  void _viewCases(BuildContext context, int subId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CasesForSubPage(subId: subId),
+      ),
+    );
+  }
+
   Widget buildTextField(
       String label, String hint, String key, Map<String, dynamic> formData,
       {TextInputType inputType = TextInputType.text}) {
@@ -157,30 +147,22 @@ class _SubsPageState extends State<SubsPage> {
     );
   }
 
-  void _viewCases(BuildContext context, int subId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CasesForSubPage(subId: subId),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Set layout to RTL
+      textDirection: TextDirection.rtl, // Set the layout to Right-to-Left
       child: Scaffold(
         appBar: AppBar(
           title: const Text('جدول الكفالات'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(), // AdminDrawer added here
+        drawer: userDrawer(), // Add the drawer here
         body: Column(
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
+                textDirection: TextDirection.rtl, // Set text field to RTL
                 decoration: const InputDecoration(
                   labelText: 'ابحث بالاسم أو الرقم',
                   border: OutlineInputBorder(),
@@ -202,8 +184,14 @@ class _SubsPageState extends State<SubsPage> {
                     margin:
                         const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: ListTile(
-                      title: Text(sub['name'] ?? 'لا يوجد'),
-                      subtitle: Text('الموقع: ${sub['location']}'),
+                      title: Text(
+                        sub['name'] ?? 'لا يوجد',
+                        textDirection: TextDirection.rtl, // Set RTL for text
+                      ),
+                      subtitle: Text(
+                        'الموقع: ${sub['location']}',
+                        textDirection: TextDirection.rtl,
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -211,41 +199,34 @@ class _SubsPageState extends State<SubsPage> {
                             onPressed: () {
                               showDialog(
                                 context: context,
-                                builder: (context) {
-                                  return Directionality(
-                                    textDirection: TextDirection.rtl,
-                                    child: AlertDialog(
-                                      title: const Text('عرض الكفالة'),
-                                      content: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text('الاسم: ${sub['name']}'),
-                                          Text('الموقع: ${sub['location']}'),
-                                          Text('رقم الهاتف: ${sub['number']}'),
-                                          Text('الوحدة: ${sub['unite']}'),
-                                        ],
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text(
-                                            'إغلاق',
-                                            style:
-                                                TextStyle(color: Colors.purple),
-                                          ),
-                                        ),
+                                builder: (context) => Directionality(
+                                  textDirection: TextDirection.rtl,
+                                  child: AlertDialog(
+                                    title: const Text('عرض الكفالة'),
+                                    content: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('الاسم: ${sub['name']}'),
+                                        Text('الموقع: ${sub['location']}'),
+                                        Text('رقم الهاتف: ${sub['number']}'),
+                                        Text('الوحدة: ${sub['unite']}'),
                                       ],
                                     ),
-                                  );
-                                },
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('إغلاق'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               );
                             },
                             child: const Text(
                               'عرض',
-                              style: TextStyle(color: Colors.blue),
+                              style: TextStyle(color: Colors.purple),
                             ),
                           ),
                           TextButton(
@@ -254,36 +235,6 @@ class _SubsPageState extends State<SubsPage> {
                               'عرض الحالات',
                               style: TextStyle(color: Colors.green),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => showEditDialog(sub),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('تأكيد الحذف'),
-                                  content: const Text(
-                                      'هل تريد حقًا حذف هذه الكفالة؟'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('إلغاء'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        deleteSub(sub['docId']);
-                                      },
-                                      child: const Text('حذف'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
                           ),
                         ],
                       ),
@@ -296,6 +247,7 @@ class _SubsPageState extends State<SubsPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
+            // Navigate to add item page
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => InsertSub()),
@@ -316,7 +268,7 @@ class CasesForSubPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Set layout to RTL
+      textDirection: TextDirection.rtl, // Set RTL for cases page
       child: Scaffold(
         appBar: AppBar(
           title: Text('الحالات للكفالة $subId'),

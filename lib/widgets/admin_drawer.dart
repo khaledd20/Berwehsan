@@ -6,7 +6,6 @@ import 'package:berwehsan/admin/sub.dart';
 import 'package:flutter/material.dart';
 import '../admin/items/viewItems.dart';
 import '../admin/cases.dart';
-import '../admin/insertCase.dart';
 import '../login.dart';
 
 class AdminDrawer extends StatelessWidget {
@@ -64,7 +63,7 @@ class AdminDrawer extends StatelessWidget {
               onTap: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => ChestsPage()),
+                  MaterialPageRoute(builder: (context) => AdminChestsPage()),
                 );
               },
             ),

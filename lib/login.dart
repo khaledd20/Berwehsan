@@ -1,4 +1,7 @@
-import 'package:berwehsan/admin/chests.dart';
+import 'package:berwehsan/admin/chests.dart'; // Admin page
+import 'package:berwehsan/moderator/chests.dart'; // Moderator page
+import 'package:berwehsan/user/chests.dart';
+//User page
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -17,7 +20,8 @@ class LoginScreenWeb extends StatelessWidget {
       if (username.isEmpty || password.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Please enter both username and password')),
+            content: Text('Please enter both username and password'),
+          ),
         );
         return;
       }
@@ -33,18 +37,45 @@ class LoginScreenWeb extends StatelessWidget {
         if (querySnapshot.docs.isNotEmpty) {
           final user = querySnapshot.docs.first.data();
           final fullName = user['FullName'];
+          final role = user['Role'];
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Welcome, $fullName!')),
-          );
+          // Debugging: Check the role value
+          print('User role: $role');
 
-          // Navigate to the Chests Page
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const ChestsPage(),
-            ),
-          );
+          if (role == 3) {
+            // Admin
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Welcome Admin, $fullName!')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminChestsPage()),
+            );
+          } else if (role == 2) {
+            // Moderator
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Welcome Moderator, $fullName!')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ChestsPageModerator()),
+            );
+          } else if (role == 1) {
+            // User
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Welcome User, $fullName!')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const UserChestsPage()),
+            );
+          } else {
+            // Invalid role
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Invalid role assigned to the user')),
+            );
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid username or password')),

@@ -1,9 +1,9 @@
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/widgets/user_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AdminChestsPage extends StatelessWidget {
-  const AdminChestsPage({super.key});
+class UserChestsPage extends StatelessWidget {
+  const UserChestsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +14,7 @@ class AdminChestsPage extends StatelessWidget {
           title: const Text('جميع الصناديق'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(), // Add the menu bar (drawer)
+        drawer: userDrawer(), // Add the menu bar (drawer)
         floatingActionButton: FloatingActionButton(
           onPressed: () => _addChest(context),
           child: const Icon(Icons.add),
@@ -47,7 +47,6 @@ class AdminChestsPage extends StatelessWidget {
                 itemCount: chests.length,
                 itemBuilder: (context, index) {
                   final chest = chests[index].data() as Map<String, dynamic>;
-                  final docId = chests[index].id;
 
                   return Card(
                     elevation: 3,
@@ -64,25 +63,9 @@ class AdminChestsPage extends StatelessWidget {
                           Text('المعرف: ${chest['id'] ?? 'غير معروف'}'),
                           Text(
                               'الرصيد: ${chest['balance']?.toString() ?? '0'}'),
-                          Text('id: ${chest['id']?.toString() ?? '0'}'),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              TextButton(
-                                onPressed: () => _deleteChest(context, docId),
-                                child: const Text(
-                                  'حذف',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    _editChest(context, docId, chest),
-                                child: const Text(
-                                  'تعديل',
-                                  style: TextStyle(color: Colors.blue),
-                                ),
-                              ),
                               TextButton(
                                 onPressed: () =>
                                     _viewCases(context, chest['id']),
@@ -106,22 +89,11 @@ class AdminChestsPage extends StatelessWidget {
     );
   }
 
-  // Function to Navigate to Cases Page
-  void _viewCases(BuildContext context, int chestId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CasesForChestPage(chestId: chestId),
-      ),
-    );
-  }
+  void _addChest(BuildContext context) {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController balanceController = TextEditingController();
 
-  Future<void> _addChest(BuildContext context) async {
-    final nameController = TextEditingController();
-    final balanceController = TextEditingController();
-    final shareController = TextEditingController();
-
-    await showDialog(
+    showDialog(
       context: context,
       builder: (context) {
         return Directionality(
@@ -140,11 +112,6 @@ class AdminChestsPage extends StatelessWidget {
                   decoration: const InputDecoration(labelText: 'الرصيد'),
                   keyboardType: TextInputType.number,
                 ),
-                TextField(
-                  controller: shareController,
-                  decoration: const InputDecoration(labelText: 'id'),
-                  keyboardType: TextInputType.number,
-                ),
               ],
             ),
             actions: [
@@ -155,32 +122,17 @@ class AdminChestsPage extends StatelessWidget {
               ElevatedButton(
                 onPressed: () async {
                   if (nameController.text.isNotEmpty &&
-                      balanceController.text.isNotEmpty &&
-                      shareController.text.isNotEmpty) {
+                      balanceController.text.isNotEmpty) {
                     try {
-                      // Fetch the last chest to determine the next ID
-                      final querySnapshot = await FirebaseFirestore.instance
-                          .collection('chests')
-                          .orderBy('id', descending: true)
-                          .limit(1)
-                          .get();
-
-                      int nextId = 1; // Default ID if no chests exist
-                      if (querySnapshot.docs.isNotEmpty) {
-                        final lastChest = querySnapshot.docs.first.data();
-                        nextId = (lastChest['id'] ?? 0) + 1;
-                      }
-
                       await FirebaseFirestore.instance
                           .collection('chests')
                           .add({
                         'name': nameController.text,
-                        'balance': int.parse(balanceController.text),
-                        'share': int.parse(shareController.text),
+                        'balance': int.tryParse(balanceController.text) ?? 0,
                         'created_at': DateTime.now().toIso8601String(),
                         'updated_at': DateTime.now().toIso8601String(),
-                        'id': nextId,
                       });
+
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('تم إضافة الصندوق بنجاح')),
@@ -205,87 +157,25 @@ class AdminChestsPage extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteChest(BuildContext context, String docId) async {
-    await FirebaseFirestore.instance.collection('chests').doc(docId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حذف الصندوق بنجاح')),
-    );
-  }
-
-  Future<void> _editChest(
-      BuildContext context, String docId, Map<String, dynamic> chest) async {
-    final nameController = TextEditingController(text: chest['name']);
-    final balanceController =
-        TextEditingController(text: chest['balance'].toString());
-    final shareController =
-        TextEditingController(text: chest['share'].toString());
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('تعديل الصندوق'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'اسم الصندوق'),
-                ),
-                TextField(
-                  controller: balanceController,
-                  decoration: const InputDecoration(labelText: 'الرصيد'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: shareController,
-                  decoration: const InputDecoration(labelText: 'id'),
-                  keyboardType: TextInputType.number,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await FirebaseFirestore.instance
-                      .collection('chests')
-                      .doc(docId)
-                      .update({
-                    'name': nameController.text,
-                    'balance': int.parse(balanceController.text),
-                    'share': int.parse(shareController.text),
-                    'updated_at': DateTime.now().toIso8601String(),
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم تعديل الصندوق بنجاح')),
-                  );
-                },
-                child: const Text('تعديل'),
-              ),
-            ],
-          ),
-        );
-      },
+  void _viewCases(BuildContext context, int chestId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CasesForChestPage(chestId: chestId),
+      ),
     );
   }
 }
 
-// CasesForChestPage Widget
 class CasesForChestPage extends StatelessWidget {
   final int chestId;
 
   const CasesForChestPage({super.key, required this.chestId});
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Set direction to Right-to-Left
+      textDirection: TextDirection.rtl, // Set the direction to Right-to-Left
       child: Scaffold(
         appBar: AppBar(
           title: Text('الحالات للصندوق $chestId'),
@@ -306,7 +196,6 @@ class CasesForChestPage extends StatelessWidget {
                 child: Text(
                   'لا توجد حالات لهذا الصندوق',
                   style: TextStyle(fontSize: 18, color: Colors.grey),
-                  textAlign: TextAlign.center, // Center-align the text
                 ),
               );
             }
@@ -324,27 +213,15 @@ class CasesForChestPage extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start, // Align text to the right
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'الحالة: ${caseData['name'] ?? 'غير معروف'}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
-                          textAlign:
-                              TextAlign.right, // Align each field to the right
                         ),
-                        Text(
-                          'رقم الحالة: ${caseData['id'] ?? 'غير معروف'}',
-                          textAlign: TextAlign.right,
-                        ),
-                        Text(
-                          'العنوان: ${caseData['location'] ?? 'غير معروف'}',
-                          textAlign: TextAlign.right,
-                        ),
-                        Text(
-                          'الرقم: ${caseData['number'] ?? 'غير معروف'}',
-                          textAlign: TextAlign.right,
-                        ),
+                        Text('رقم الحالة: ${caseData['id'] ?? 'غير معروف'}'),
+                        Text('العنوان: ${caseData['location'] ?? 'غير معروف'}'),
+                        Text('الرقم: ${caseData['number'] ?? 'غير معروف'}'),
                       ],
                     ),
                   ),
