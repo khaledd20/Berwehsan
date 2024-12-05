@@ -1,5 +1,8 @@
+import 'package:berwehsan/user/Feeding.dart';
+import 'package:berwehsan/user/Itinerary.dart';
 import 'package:berwehsan/user/area.dart';
 import 'package:berwehsan/user/chests.dart';
+import 'package:berwehsan/user/feedingHistory.dart';
 import 'package:berwehsan/user/items/historyItem.dart';
 import 'package:berwehsan/user/sub.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +84,36 @@ class userDrawer extends StatelessWidget {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => AreasPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('خط سير'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => ItineraryPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('الاطعام'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => FeedingPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('سجل الإطعام'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => FeedingHistoryPage()),
               );
             },
           ),

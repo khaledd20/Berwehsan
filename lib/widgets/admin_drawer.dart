@@ -1,6 +1,9 @@
+import 'package:berwehsan/admin/Feeding.dart';
+import 'package:berwehsan/admin/Itinerary.dart';
 import 'package:berwehsan/admin/UserControl.dart';
 import 'package:berwehsan/admin/area.dart';
 import 'package:berwehsan/admin/chests.dart';
+import 'package:berwehsan/admin/feedingHistory.dart';
 import 'package:berwehsan/admin/items/historyItem.dart';
 import 'package:berwehsan/admin/sub.dart';
 import 'package:flutter/material.dart';
@@ -94,6 +97,36 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => UserControlPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('خط سير'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => ItineraryPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('الاطعام'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => FeedingPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('سجل الإطعام'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => FeedingHistoryPage()),
                 );
               },
             ),

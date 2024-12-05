@@ -2,6 +2,7 @@ import 'package:berwehsan/admin/insertSub.dart';
 import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:html' as html;
 
 class SubsPage extends StatefulWidget {
   @override
@@ -174,6 +175,14 @@ class _SubsPageState extends State<SubsPage> {
         appBar: AppBar(
           title: const Text('جدول الكفالات'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: () =>
+                  printSubsData(context), // Call the print function
+              tooltip: 'طباعة جدول الكفالات',
+            ),
+          ],
         ),
         drawer: AdminDrawer(), // AdminDrawer added here
         body: Column(
@@ -306,6 +315,65 @@ class _SubsPageState extends State<SubsPage> {
       ),
     );
   }
+
+  Future<void> printSubsData(BuildContext context) async {
+    final buffer = StringBuffer();
+
+    buffer.writeln('<html>');
+    buffer.writeln('<head>');
+    buffer.writeln('<meta charset="UTF-8">');
+    buffer.writeln('<style>');
+    buffer.writeln(
+        'body { direction: rtl; font-family: Arial, sans-serif; margin: 20px; }');
+    buffer.writeln(
+        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln(
+        'th, td { border: 1px solid black; padding: 8px; text-align: right; }');
+    buffer.writeln('th { background-color: #f2f2f2; }');
+    buffer.writeln('</style>');
+    buffer.writeln('</head>');
+    buffer.writeln('<body>');
+    buffer.writeln('<h1>جدول الكفالات</h1>');
+    buffer.writeln('<table>');
+    buffer.writeln('<tr><th>الاسم</th><th>الموقع</th><th>رقم الهاتف</th></tr>');
+
+    try {
+      final subsCollection = FirebaseFirestore.instance.collection('subs');
+      final querySnapshot = await subsCollection.get();
+
+      print('Subs count: ${querySnapshot.docs.length}'); // Debugging count
+
+      for (var sub in querySnapshot.docs) {
+        final subData = sub.data();
+        buffer.writeln(
+            '<tr><td>${subData['name'] ?? 'غير معروف'}</td><td>${subData['location'] ?? 'غير معروف'}</td><td>${subData['number'] ?? 'غير معروف'}</td></tr>');
+      }
+    } catch (e) {
+      buffer
+          .writeln('<tr><td colspan="3">حدث خطأ أثناء جلب البيانات</td></tr>');
+      print('Error fetching subs: $e'); // Debugging error
+    }
+
+    buffer.writeln('</table>');
+    buffer.writeln('</body>');
+    buffer.writeln('</html>');
+
+    // Debugging generated HTML
+    print('Generated HTML: ${buffer.toString()}');
+
+    final blob = html.Blob([buffer.toString()], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    // Debugging blob URL
+    print('Blob URL: $url');
+
+    html.window.open(url, '_blank');
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم طباعة الكفالات بنجاح')),
+    );
+  }
 }
 
 class CasesForSubPage extends StatelessWidget {
@@ -321,6 +389,14 @@ class CasesForSubPage extends StatelessWidget {
         appBar: AppBar(
           title: Text('الحالات للكفالة $subId'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: () =>
+                  printCasesForSub(context, subId), // Call the print function
+              tooltip: 'طباعة الحالات للكفالة',
+            ),
+          ],
         ),
         body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -372,6 +448,57 @@ class CasesForSubPage extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  Future<void> printCasesForSub(BuildContext context, int subId) async {
+    final buffer = StringBuffer();
+
+    buffer.writeln('<html>');
+    buffer.writeln('<head>');
+    buffer.writeln('<meta charset="UTF-8">');
+    buffer.writeln('<style>');
+    buffer.writeln(
+        'body { direction: rtl; font-family: Arial, sans-serif; margin: 20px; }');
+    buffer.writeln(
+        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln(
+        'th, td { border: 1px solid black; padding: 8px; text-align: right; }');
+    buffer.writeln('th { background-color: #f2f2f2; }');
+    buffer.writeln('</style>');
+    buffer.writeln('</head>');
+    buffer.writeln('<body>');
+    buffer.writeln('<h1>الحالات للكفالة $subId</h1>');
+    buffer.writeln('<table>');
+    buffer
+        .writeln('<tr><th>الاسم</th><th>العنوان</th><th>رقم الهاتف</th></tr>');
+
+    try {
+      final casesCollection = FirebaseFirestore.instance.collection('cases');
+      final querySnapshot =
+          await casesCollection.where('sub_ids', arrayContains: subId).get();
+
+      for (var caseDoc in querySnapshot.docs) {
+        final caseData = caseDoc.data();
+        buffer.writeln(
+            '<tr><td>${caseData['name'] ?? 'غير معروف'}</td><td>${caseData['location'] ?? 'غير معروف'}</td><td>${caseData['number'] ?? 'غير معروف'}</td></tr>');
+      }
+    } catch (e) {
+      buffer
+          .writeln('<tr><td colspan="3">حدث خطأ أثناء جلب البيانات</td></tr>');
+    }
+
+    buffer.writeln('</table>');
+    buffer.writeln('</body>');
+    buffer.writeln('</html>');
+
+    final blob = html.Blob([buffer.toString()], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.window.open(url, '_blank');
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم طباعة الحالات بنجاح')),
     );
   }
 }

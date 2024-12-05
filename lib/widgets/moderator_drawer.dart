@@ -1,10 +1,13 @@
+import 'package:berwehsan/moderator/Feeding.dart';
+import 'package:berwehsan/moderator/Itinerary.dart';
 import 'package:berwehsan/moderator/area.dart';
+import 'package:berwehsan/moderator/cases.dart';
 import 'package:berwehsan/moderator/chests.dart';
+import 'package:berwehsan/moderator/feedingHistory.dart';
 import 'package:berwehsan/moderator/items/historyItem.dart';
 import 'package:berwehsan/moderator/sub.dart';
 import 'package:flutter/material.dart';
 import '../moderator/items/viewItems.dart';
-import '../moderator/cases.dart';
 import '../login.dart';
 
 class ModeratorDrawer extends StatelessWidget {
@@ -50,7 +53,7 @@ class ModeratorDrawer extends StatelessWidget {
             onTap: () {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => ModeratorChestsPage()),
+                MaterialPageRoute(builder: (context) => CasesPage()),
               );
             },
           ),
@@ -81,6 +84,36 @@ class ModeratorDrawer extends StatelessWidget {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => AreasPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('خط سير'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => ItineraryPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('الاطعام'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => FeedingPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('سجل الإطعام'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => FeedingHistoryPage()),
               );
             },
           ),

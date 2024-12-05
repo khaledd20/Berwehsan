@@ -1,6 +1,7 @@
 import 'package:berwehsan/widgets/user_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:html' as html; // For printing
 import 'caseProfile.dart';
 import 'insertCase.dart';
 
@@ -12,7 +13,7 @@ class CasesPage extends StatefulWidget {
 }
 
 class _CasesPageState extends State<CasesPage> {
-  String searchQuery = ''; // To hold the search query
+  String searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +23,12 @@ class _CasesPageState extends State<CasesPage> {
         appBar: AppBar(
           title: const Text('جدول الحالات'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: _printAllCases, // Call the printing function here
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(50.0),
             child: Padding(
@@ -29,7 +36,7 @@ class _CasesPageState extends State<CasesPage> {
               child: TextField(
                 onChanged: (value) {
                   setState(() {
-                    searchQuery = value; // Update the search query
+                    searchQuery = value;
                   });
                 },
                 decoration: const InputDecoration(
@@ -41,7 +48,7 @@ class _CasesPageState extends State<CasesPage> {
             ),
           ),
         ),
-        drawer: userDrawer(), // Add the drawer here
+        drawer: userDrawer(),
         body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('cases')
@@ -60,18 +67,15 @@ class _CasesPageState extends State<CasesPage> {
 
             final cases = snapshot.data!.docs;
 
-            // Filter cases based on the search query
             final filteredCases = cases.where((doc) {
               final caseData = doc.data() as Map<String, dynamic>;
               final name = caseData['name']?.toString().toLowerCase() ?? '';
               final id = caseData['id']?.toString();
 
-              // If search query is numeric, match ID exactly
               if (RegExp(r'^\d+$').hasMatch(searchQuery)) {
                 return id == searchQuery;
               }
 
-              // Otherwise, perform a partial match for the name
               return name.contains(searchQuery.toLowerCase());
             }).toList();
 
@@ -86,19 +90,31 @@ class _CasesPageState extends State<CasesPage> {
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   child: ListTile(
                     title: Text(caseData['name'] ?? 'غير معروف'),
-                    subtitle:
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text('رقم الحالة: ${caseData['id'] ?? 'غير معروف'}'),
-                    trailing: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CaseProfile(
-                                caseId: int.parse(caseData['id'].toString())),
-                          ),
-                        );
-                      },
-                      child: const Text('عرض'),
+                        Text(
+                            'رقم التليفون: ${caseData['number'] ?? 'غير معروف'}'),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CaseProfile(
+                                  caseId: int.parse(caseData['id'].toString()),
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('عرض الملف'),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -121,5 +137,80 @@ class _CasesPageState extends State<CasesPage> {
         ),
       ),
     );
+  }
+
+  /// Function to print all cases
+  Future<void> _printAllCases() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('cases').get();
+
+      // Sort the documents by ID in ascending order
+      final sortedDocs = snapshot.docs
+        ..sort((a, b) {
+          final idA = int.tryParse(
+                  (a.data() as Map<String, dynamic>)['id'].toString()) ??
+              0;
+          final idB = int.tryParse(
+                  (b.data() as Map<String, dynamic>)['id'].toString()) ??
+              0;
+          return idA.compareTo(idB);
+        });
+
+      final buffer = StringBuffer();
+      buffer.writeln('<html>');
+      buffer.writeln('<head>');
+      buffer.writeln('<meta charset="UTF-8">'); // Ensures proper text encoding
+      buffer.writeln('<style>');
+      buffer.writeln(
+          'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+      buffer.writeln(
+          'th, td { border: 1px solid black; padding: 8px; text-align: right; }');
+      buffer.writeln('th { background-color: #f2f2f2; }');
+      buffer.writeln('</style>');
+      buffer.writeln('</head>');
+      buffer.writeln(
+          '<body style="direction: rtl; font-family: Arial, sans-serif;">');
+      buffer.writeln('<h1>جدول الحالات</h1>');
+      buffer.writeln('<table>');
+      buffer.writeln(
+          '<tr><th>رقم الحالة</th><th>اسم الحالة</th><th>رقم التليفون</th></tr>');
+
+      for (final doc in sortedDocs) {
+        final data = doc.data() as Map<String, dynamic>;
+        buffer.writeln(
+            '<tr><td>${data['id'] ?? 'غير معروف'}</td><td>${data['name'] ?? 'غير معروف'}</td><td>${data['number'] ?? 'غير معروف'}</td></tr>');
+      }
+
+      buffer.writeln('</table>');
+      buffer.writeln('</body>');
+      buffer.writeln('</html>');
+
+      final blob = html.Blob([buffer.toString()], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.window.open(url, '_blank');
+      html.Url.revokeObjectUrl(url);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إنشاء جدول الطباعة بنجاح')),
+      );
+    } catch (error) {
+      print('Error printing cases: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء الطباعة: $error')),
+      );
+    }
+  }
+
+  /// Generate user-friendly labels for fields
+  String _getFieldLabel(String key) {
+    switch (key) {
+      case 'name':
+        return 'اسم الحالة';
+      case 'number':
+        return 'رقم التليفون';
+      default:
+        return key;
+    }
   }
 }

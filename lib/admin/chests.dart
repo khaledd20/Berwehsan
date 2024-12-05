@@ -1,6 +1,7 @@
 import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:html' as html;
 
 class AdminChestsPage extends StatelessWidget {
   const AdminChestsPage({super.key});
@@ -8,13 +9,20 @@ class AdminChestsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Set everything to right alignment
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('جميع الصناديق'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: () => ChestPrinter().printChestsData(context),
+              tooltip: 'طباعة بيانات الصناديق',
+            ),
+          ],
         ),
-        drawer: AdminDrawer(), // Add the menu bar (drawer)
+        drawer: AdminDrawer(),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _addChest(context),
           child: const Icon(Icons.add),
@@ -64,9 +72,7 @@ class AdminChestsPage extends StatelessWidget {
                           Text('المعرف: ${chest['id'] ?? 'غير معروف'}'),
                           Text(
                               'الرصيد: ${chest['balance']?.toString() ?? '0'}'),
-                          Text('id: ${chest['id']?.toString() ?? '0'}'),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               TextButton(
                                 onPressed: () => _deleteChest(context, docId),
@@ -277,12 +283,64 @@ class AdminChestsPage extends StatelessWidget {
   }
 }
 
+class ChestPrinter {
+  Future<void> printChestsData(BuildContext context) async {
+    final chestsCollection = FirebaseFirestore.instance.collection('chests');
+    final buffer = StringBuffer();
+
+    buffer.writeln('<html>');
+    buffer.writeln('<head>');
+    buffer.writeln('<meta charset="UTF-8">');
+    buffer.writeln('<style>');
+    buffer.writeln(
+        'body { direction: rtl; font-family: Arial, sans-serif; margin: 20px; }');
+    buffer.writeln(
+        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln(
+        'th, td { border: 1px solid black; padding: 8px; text-align: right; }');
+    buffer.writeln('th { background-color: #f2f2f2; }');
+    buffer.writeln('h1 { text-align: center; font-size: 24px; }');
+    buffer.writeln('</style>');
+    buffer.writeln('</head>');
+    buffer.writeln('<body>');
+
+    buffer.writeln('<h1>بيانات الصناديق</h1>');
+    buffer.writeln('<table>');
+    buffer
+        .writeln('<tr><th>اسم الصندوق</th><th>الرصيد</th><th>المعرف</th></tr>');
+
+    try {
+      final querySnapshot = await chestsCollection.get();
+      for (var chest in querySnapshot.docs) {
+        final chestData = chest.data();
+        buffer.writeln(
+            '<tr><td>${chestData['name'] ?? 'غير معروف'}</td><td>${chestData['balance'] ?? 'غير معروف'}</td><td>${chestData['id'] ?? 'غير معروف'}</td></tr>');
+      }
+    } catch (error) {
+      buffer.writeln(
+          '<tr><td colspan="3">حدث خطأ أثناء استرجاع البيانات: $error</td></tr>');
+    }
+
+    buffer.writeln('</table>');
+    buffer.writeln('</body>');
+    buffer.writeln('</html>');
+
+    final blob = html.Blob([buffer.toString()], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.window.open(url, '_blank');
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم طباعة بيانات الصناديق بنجاح')),
+    );
+  }
+}
+
 // CasesForChestPage Widget
 class CasesForChestPage extends StatelessWidget {
   final int chestId;
 
   const CasesForChestPage({super.key, required this.chestId});
-  @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl, // Set direction to Right-to-Left
@@ -290,6 +348,13 @@ class CasesForChestPage extends StatelessWidget {
         appBar: AppBar(
           title: Text('الحالات للصندوق $chestId'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: () => _printCasesForChest(context, chestId),
+              tooltip: 'طباعة بيانات الحالات',
+            ),
+          ],
         ),
         body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -354,6 +419,59 @@ class CasesForChestPage extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _printCasesForChest(BuildContext context, int chestId) async {
+    final casesCollection = FirebaseFirestore.instance.collection('cases');
+    final buffer = StringBuffer();
+
+    buffer.writeln('<html>');
+    buffer.writeln('<head>');
+    buffer.writeln('<meta charset="UTF-8">');
+    buffer.writeln('<style>');
+    buffer.writeln(
+        'body { direction: rtl; font-family: Arial, sans-serif; margin: 20px; }');
+    buffer.writeln(
+        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln(
+        'th, td { border: 1px solid black; padding: 8px; text-align: right; }');
+    buffer.writeln('th { background-color: #f2f2f2; }');
+    buffer.writeln('h1 { text-align: center; }');
+    buffer.writeln('</style>');
+    buffer.writeln('</head>');
+    buffer.writeln('<body>');
+
+    buffer.writeln('<h1>بيانات الحالات للصندوق $chestId</h1>');
+    buffer.writeln('<table>');
+    buffer.writeln(
+        '<tr><th>اسم الحالة</th><th>العنوان</th><th>رقم الهاتف</th></tr>');
+
+    try {
+      final querySnapshot = await casesCollection
+          .where('chest_ids', arrayContains: chestId)
+          .get();
+      for (var caseDoc in querySnapshot.docs) {
+        final caseData = caseDoc.data();
+        buffer.writeln(
+            '<tr><td>${caseData['name'] ?? 'غير معروف'}</td><td>${caseData['location'] ?? 'غير معروف'}</td><td>${caseData['number'] ?? 'غير معروف'}</td></tr>');
+      }
+    } catch (error) {
+      buffer.writeln(
+          '<tr><td colspan="3">حدث خطأ أثناء استرجاع البيانات</td></tr>');
+    }
+
+    buffer.writeln('</table>');
+    buffer.writeln('</body>');
+    buffer.writeln('</html>');
+
+    final blob = html.Blob([buffer.toString()], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.window.open(url, '_blank');
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم طباعة بيانات الحالات بنجاح')),
     );
   }
 }

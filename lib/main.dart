@@ -1,14 +1,13 @@
-import 'package:berwehsan/login.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:intl/date_symbol_data_local.dart'; // For locale initialization
+import 'package:berwehsan/login.dart'; // Ensure this path is correct
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ar', null);
 
-  // Initialize Firebase with web-specific configuration
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "AIzaSyAeCWm39LL0bWVanOnz-t9sGQ7xQrW6GWA",
@@ -35,9 +34,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      builder: EasyLoading.init(), // تهيئة EasyLoading
-
-      home: LoginScreenWeb(), // Default home page set to ChestsPage
+      builder: EasyLoading.init(),
+      home: const LoginScreenWeb(),
     );
   }
 }
