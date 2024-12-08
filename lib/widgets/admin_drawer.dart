@@ -1,4 +1,5 @@
 import 'package:berwehsan/admin/Feeding.dart';
+import 'package:berwehsan/admin/IncomePage.dart';
 import 'package:berwehsan/admin/Itinerary.dart';
 import 'package:berwehsan/admin/UserControl.dart';
 import 'package:berwehsan/admin/area.dart';
@@ -127,6 +128,16 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => FeedingHistoryPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('الوارد'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => IncomePage()),
                 );
               },
             ),
