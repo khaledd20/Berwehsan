@@ -62,7 +62,6 @@ class AreasPage extends StatelessWidget {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text('المعرف: ${area['id'] ?? 'غير معروف'}'),
-                          Text('الوصف: ${area['description'] ?? 'غير معروف'}'),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
@@ -116,10 +115,6 @@ class AreasPage extends StatelessWidget {
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'اسم المنطقة'),
-                ),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'الوصف'),
                 ),
               ],
             ),

@@ -1,6 +1,7 @@
 import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:html' as html;
 
 class ItineraryPage extends StatefulWidget {
   @override
@@ -156,6 +157,13 @@ class _ItineraryPageState extends State<ItineraryPage> {
         appBar: AppBar(
           title: const Text('جدول خط السير'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              onPressed: () => printItinerariesData(context),
+              tooltip: 'طباعة جدول خط السير',
+            ),
+          ],
         ),
         drawer: ModeratorDrawer(),
         body: Column(
@@ -193,11 +201,17 @@ class _ItineraryPageState extends State<ItineraryPage> {
                           Text('التاريخ: ${itinerary['date']}'),
                           Text(
                               'ثمن المواصلات: ${itinerary['cost']?.toString() ?? 'غير معروف'}'),
+                          Text('ملحوظات: ${itinerary['notes']}'),
                         ],
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => showEditDialog(itinerary),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => showEditDialog(itinerary),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -220,6 +234,61 @@ class _ItineraryPageState extends State<ItineraryPage> {
           child: const Icon(Icons.add),
         ),
       ),
+    );
+  }
+
+  Future<void> printItinerariesData(BuildContext context) async {
+    final buffer = StringBuffer();
+
+    // Start of HTML document
+    buffer.writeln('<html>');
+    buffer.writeln('<head>');
+    buffer.writeln('<meta charset="UTF-8">');
+    buffer.writeln('<style>');
+    buffer.writeln(
+        'body { direction: rtl; font-family: Arial, sans-serif; margin: 20px; }');
+    buffer.writeln(
+        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln(
+        'th, td { border: 1px solid black; padding: 8px; text-align: right; }');
+    buffer.writeln('th { background-color: #f2f2f2; }');
+    buffer.writeln('</style>');
+    buffer.writeln('</head>');
+    buffer.writeln('<body>');
+    buffer.writeln('<h1>جدول خط السير</h1>');
+    buffer.writeln('<table>');
+    buffer.writeln(
+        '<tr><th>الاسم</th><th>من</th><th>إلى</th><th>التاريخ</th><th>ثمن المواصلات</th><th>الملاحظات</th></tr>');
+
+    try {
+      // Fetch itineraries data
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('itineraries')
+          .where('name', isGreaterThanOrEqualTo: searchQuery)
+          .get();
+
+      for (var itinerary in querySnapshot.docs) {
+        final data = itinerary.data();
+        buffer.writeln(
+            '<tr><td>${data['name'] ?? 'غير معروف'}</td><td>${data['from'] ?? '-'}</td><td>${data['to'] ?? '-'}</td><td>${data['date'] ?? '-'}</td><td>${data['cost']?.toString() ?? '0'}</td><td>${data['notes'] ?? '-'}</td></tr>');
+      }
+    } catch (e) {
+      buffer
+          .writeln('<tr><td colspan="6">حدث خطأ أثناء جلب البيانات</td></tr>');
+    }
+
+    buffer.writeln('</table>');
+    buffer.writeln('</body>');
+    buffer.writeln('</html>');
+
+    // Create a blob and open the file
+    final blob = html.Blob([buffer.toString()], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.window.open(url, '_blank');
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم طباعة جدول خط السير بنجاح')),
     );
   }
 }
