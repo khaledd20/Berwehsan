@@ -1,3 +1,4 @@
+import 'package:berwehsan/admin/CashHistory.dart';
 import 'package:berwehsan/admin/Feeding.dart';
 import 'package:berwehsan/admin/IncomePage.dart';
 import 'package:berwehsan/admin/Itinerary.dart';
@@ -60,6 +61,16 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => CasesPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('سجل القبض'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => CashHistoryPage()),
                 );
               },
             ),

@@ -1,3 +1,4 @@
+import 'package:berwehsan/user/CashHistory.dart';
 import 'package:berwehsan/user/Feeding.dart';
 import 'package:berwehsan/user/IncomePage.dart';
 import 'package:berwehsan/user/Itinerary.dart';
@@ -60,6 +61,16 @@ class userDrawer extends StatelessWidget {
               );
             },
           ),
+          ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('سجل القبض'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => CashHistoryPage()),
+                );
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.account_balance),
             title: const Text('الصناديق'),
