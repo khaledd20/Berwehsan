@@ -148,18 +148,33 @@ class _IncomePageState extends State<IncomePage> {
 
   Future<void> _printFilteredResults(List<QueryDocumentSnapshot> logs) async {
   try {
+    // Initialize totals
+    int totalAmount = 0; 
+    int balance = 0;
+
+    // Fetch the balance from the 'finance/الاجمالي' document
+    final financeDoc = await FirebaseFirestore.instance
+        .collection('finance')
+        .doc('الاجمالي')
+        .get();
+
+    if (financeDoc.exists) {
+      balance = (financeDoc.data()?['balance'] ?? 0) as int; 
+    }
+
     final buffer = StringBuffer();
     buffer.writeln('<html>');
     buffer.writeln('<head>');
     buffer.writeln('<meta charset="UTF-8">');
     buffer.writeln('<style>');
     buffer.writeln('table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
-    buffer.writeln('th, td { border: 1px solid black; padding: 8px; text-align: right; }');
-    buffer.writeln('th { background-color: #f2f2f2; }');
+    buffer.writeln('th, td { border: 1px solid black; padding: 8px; text-align: center; }');
+    buffer.writeln('th { background-color: #f2f2f2; font-size: 18px; }');
+    buffer.writeln('td { font-size: 16px; }');
     buffer.writeln('</style>');
     buffer.writeln('</head>');
     buffer.writeln('<body style="direction: rtl; font-family: Arial, sans-serif;">');
-    buffer.writeln('<h1>سجل الوارد</h1>');
+    buffer.writeln('<h1 style="text-align: center;">سجل الوارد</h1>');
     buffer.writeln('<table>');
     buffer.writeln('<tr>'
         '<th>رقم الإيصال</th>'
@@ -170,43 +185,45 @@ class _IncomePageState extends State<IncomePage> {
         '<th>التاريخ</th>'
         '<th>الملاحظات</th>'
         '</tr>');
-        
-        int totalAmount = 0; // Variable to calculate the total amount
 
-        for (final log in logs) {
-          final data = log.data() as Map<String, dynamic>;
+    // Generate table rows
+    for (final log in logs) {
+      final data = log.data() as Map<String, dynamic>;
 
-          // Safely cast 'amount' to int
-          final amount = (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
+      // Safely cast 'amount' to int
+      final amount = (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
+      totalAmount += amount;
 
-          totalAmount += amount;
-
-          buffer.writeln('<tr>'
-              '<td>${data['receipt_number'] ?? 'غير معروف'}</td>'
-              '<td>${data['name'] ?? 'غير معروف'}</td>'
-              '<td>${data['phone'] ?? 'غير معروف'}</td>'
-              '<td>$amount</td>' // Removed unnecessary braces
-              '<td>${data['category'] ?? 'غير معروف'}</td>'
-              '<td>${formatDateTime(data['date_time'])}</td>'
-              '<td>${data['notes'] ?? ''}</td>'
-              '</tr>');
-        }
-
-      // Append a row for the total amount at the bottom of the table
       buffer.writeln('<tr>'
-          '<td colspan="3" style="font-weight: bold; text-align: center;">الإجمالي</td>'
-          '<td style="font-weight: bold;">$totalAmount</td>'
-          '<td colspan="3"></td>'
+          '<td>${data['receipt_number'] ?? 'غير معروف'}</td>'
+          '<td>${data['name'] ?? 'غير معروف'}</td>'
+          '<td>${data['phone'] ?? 'غير معروف'}</td>'
+          '<td>$amount</td>'
+          '<td>${data['category'] ?? 'غير معروف'}</td>'
+          '<td>${formatDateTime(data['date_time'])}</td>'
+          '<td>${data['notes'] ?? ''}</td>'
           '</tr>');
+    }
 
-      buffer.writeln('</table>');
+    // Append a row for the total amount
+    buffer.writeln('<tr>'
+        '<td colspan="3" style="font-weight: bold; text-align: center;">الإجمالي</td>'
+        '<td style="font-weight: bold;">$totalAmount</td>'
+        '<td colspan="3"></td>'
+        '</tr>');
 
-   
+    // Append a row for the balance
+    buffer.writeln('<tr>'
+        '<td colspan="3" style="font-weight: bold; text-align: center;">الرصيد</td>'
+        '<td style="font-weight: bold;">$balance</td>'
+        '<td colspan="3"></td>'
+        '</tr>');
 
     buffer.writeln('</table>');
     buffer.writeln('</body>');
     buffer.writeln('</html>');
 
+    // Create and open the print file
     final blob = html.Blob([buffer.toString()], 'text/html');
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.window.open(url, '_blank');
@@ -216,11 +233,13 @@ class _IncomePageState extends State<IncomePage> {
       const SnackBar(content: Text('تم إنشاء جدول الطباعة بنجاح')),
     );
   } catch (error) {
+    print('Error generating print results: $error');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('حدث خطأ أثناء الطباعة: $error')),
     );
   }
 }
+
 
   
  Future<void> _printReceipt(Map<String, dynamic> data) async {

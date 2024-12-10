@@ -157,28 +157,45 @@ class _OutcomePageState extends State<OutcomePage> {
   }
 
   try {
+    int totalAmount = 0;
+    int balance = 0;
+
+    // Fetch balance for display from 'الاجمالي'
+    final financeDoc = await FirebaseFirestore.instance
+        .collection('finance')
+        .doc('الاجمالي')
+        .get();
+
+    if (financeDoc.exists) {
+      balance = financeDoc.data()?['balance'] ?? 0;
+    }
+
     final buffer = StringBuffer();
     buffer.writeln('<html>');
     buffer.writeln('<head>');
     buffer.writeln('<meta charset="UTF-8">');
     buffer.writeln('<style>');
-    buffer.writeln('table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
-    buffer.writeln('th, td { border: 1px solid black; padding: 8px; text-align: center; }');
+    buffer.writeln(
+        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln(
+        'th, td { border: 1px solid black; padding: 8px; text-align: center; }');
     buffer.writeln('th { background-color: #f2f2f2; font-size: 18px; }');
     buffer.writeln('td { font-size: 16px; }');
     buffer.writeln('</style>');
     buffer.writeln('</head>');
-    buffer.writeln('<body style="direction: rtl; font-family: Arial, sans-serif;">');
+    buffer.writeln(
+        '<body style="direction: rtl; font-family: Arial, sans-serif;">');
     buffer.writeln('<h1 style="text-align: center;">سجل الصادر</h1>');
     buffer.writeln('<table>');
-    buffer.writeln('<tr><th>الوصف</th><th>المبلغ</th><th>التاريخ</th></tr>');
-
-    int totalAmount = 0;
+    buffer.writeln(
+        '<tr><th>الوصف</th><th>المبلغ</th><th>التاريخ</th></tr>');
 
     for (final log in logs) {
       final data = log.data() as Map<String, dynamic>;
 
-      final amount = (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
+      final amount = (data['amount'] ?? 0) is num
+          ? (data['amount'] as num).toInt()
+          : 0;
       final category = data['category'] ?? '---';
       final receiptNumber = data['receipt_number'] ?? '---';
       final dateTime = data['date_time'] ?? '';
@@ -192,10 +209,16 @@ class _OutcomePageState extends State<OutcomePage> {
           '</tr>');
     }
 
-    // Total row
+    // Append total row
     buffer.writeln('<tr>'
         '<td colspan="2" style="font-weight: bold; text-align: center;">الإجمالي</td>'
         '<td style="font-weight: bold;">$totalAmount</td>'
+        '</tr>');
+
+    // Append balance row
+    buffer.writeln('<tr>'
+        '<td colspan="2" style="font-weight: bold; text-align: center;">الرصيد</td>'
+        '<td style="font-weight: bold;">$balance</td>'
         '</tr>');
 
     buffer.writeln('</table>');
@@ -217,6 +240,7 @@ class _OutcomePageState extends State<OutcomePage> {
     );
   }
 }
+
 
 
 
