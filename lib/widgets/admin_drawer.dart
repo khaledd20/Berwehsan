@@ -1,6 +1,8 @@
 import 'package:berwehsan/admin/Feeding.dart';
 import 'package:berwehsan/admin/IncomePage.dart';
 import 'package:berwehsan/admin/Itinerary.dart';
+import 'package:berwehsan/admin/OutcomePage.dart';
+import 'package:berwehsan/admin/SearchingPage.dart';
 import 'package:berwehsan/admin/UserControl.dart';
 import 'package:berwehsan/admin/area.dart';
 import 'package:berwehsan/admin/chests.dart';
@@ -138,6 +140,26 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => IncomePage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('الصادر'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => OutcomePage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('بحث الحالات'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => SearchingPage()),
                 );
               },
             ),

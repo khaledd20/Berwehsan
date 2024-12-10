@@ -1,9 +1,8 @@
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:html' as html;
-import 'package:rxdart/rxdart.dart';
 
 
 class OutcomePage extends StatefulWidget {
@@ -321,21 +320,6 @@ Future<void> _updateTotalAmount() async {
 
 
 
-
-
-// Function to delete a document
-  Future<void> _deleteReceipt(String docId) async {
-  await FirebaseFirestore.instance.collection('finance_log').doc(docId).delete();
-  await _updateTotalAmount(); // Recalculate total amount
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('تم حذف الإيصال بنجاح!')),
-  );
-  // Update category totals
-}
-
-
-
-
 // Function to edit a document
   void _editReceipt(String docId, Map<String, dynamic> data) {
   final receiptController = TextEditingController(text: data['receipt_number']);
@@ -535,7 +519,7 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
             ),
           ],
         ),
-        drawer: AdminDrawer(),
+        drawer: ModeratorDrawer(),
         body: Column(
           children: [
             Padding(
@@ -652,11 +636,7 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
                               onPressed: () => _editReceipt(docId, log),
                               tooltip: "تعديل",
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteReceipt(docId),
-                              tooltip: "حذف",
-                            ),
+                            
                           ],
                         ),
                       ),

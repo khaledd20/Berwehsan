@@ -1,5 +1,8 @@
 import 'package:berwehsan/moderator/Feeding.dart';
+import 'package:berwehsan/moderator/IncomePage.dart';
 import 'package:berwehsan/moderator/Itinerary.dart';
+import 'package:berwehsan/moderator/OutcomePage.dart';
+import 'package:berwehsan/moderator/SearchingPage.dart';
 import 'package:berwehsan/moderator/area.dart';
 import 'package:berwehsan/moderator/cases.dart';
 import 'package:berwehsan/moderator/chests.dart';
@@ -117,6 +120,36 @@ class ModeratorDrawer extends StatelessWidget {
               );
             },
           ),
+          ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('الوارد'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => IncomePage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('الصادر'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => OutcomePage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('بحث الحالات'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => SearchingPage()),
+                );
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.login),
             title: const Text('تسجيل خروج'),

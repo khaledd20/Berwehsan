@@ -1,4 +1,4 @@
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/widgets/user_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' as intl;
@@ -221,6 +221,7 @@ class _IncomePageState extends State<IncomePage> {
     );
   }
 }
+
   
  Future<void> _printReceipt(Map<String, dynamic> data) async {
   final buffer = StringBuffer();
@@ -320,106 +321,6 @@ Future<void> _updateTotalAmount() async {
 
 
 
-// Function to delete a document
-  Future<void> _deleteReceipt(String docId) async {
-  await FirebaseFirestore.instance.collection('finance_log').doc(docId).delete();
-  await _updateTotalAmount(); // Recalculate total amount
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('تم حذف الإيصال بنجاح!')),
-  );
-  // Update category totals
-}
-
-
-
-
-// Function to edit a document
-  void _editReceipt(String docId, Map<String, dynamic> data) {
-  final receiptController = TextEditingController(text: data['receipt_number']);
-  final nameController = TextEditingController(text: data['name']);
-  final phoneController = TextEditingController(text: data['phone']);
-  final amountController = TextEditingController(text: data['amount'].toString());
-  final noteController = TextEditingController(text: data['notes'] ?? '');
-  String selectedCategory = data['category'];
-
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("تعديل الإيصال"),
-      content: SingleChildScrollView(
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              value: selectedCategory,
-              items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك']
-                  .map((category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      ))
-                  .toList(),
-              onChanged: (value) => selectedCategory = value!,
-              decoration: const InputDecoration(labelText: "الفئة"),
-            ),
-            TextField(controller: receiptController, decoration: const InputDecoration(labelText: "رقم الإيصال")),
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: "اسم المصدر")),
-            TextField(controller: phoneController, decoration: const InputDecoration(labelText: "رقم الهاتف")),
-            TextField(controller: amountController, decoration: const InputDecoration(labelText: "المبلغ"), keyboardType: TextInputType.number),
-            TextField(controller: noteController, decoration: const InputDecoration(labelText: "الملاحظات")),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("إلغاء")),
-        ElevatedButton(
-          onPressed: () async {
-            final newAmount = int.tryParse(amountController.text) ?? 0;
-            final newCategory = selectedCategory;
-
-            // Subtract the old amount from the old category
-            final oldCategoryRef = FirebaseFirestore.instance.collection('finance').doc(data['category']);
-            final oldCategoryDoc = await oldCategoryRef.get();
-            if (oldCategoryDoc.exists) {
-              final oldAmount = oldCategoryDoc['amount'] ?? 0;
-              await oldCategoryRef.update({"amount": oldAmount - data['amount']});
-            }
-
-            // Add the new amount to the new category
-            final newCategoryRef = FirebaseFirestore.instance.collection('finance').doc(newCategory);
-            final newCategoryDoc = await newCategoryRef.get();
-            if (newCategoryDoc.exists) {
-              final currentAmount = newCategoryDoc['amount'] ?? 0;
-              await newCategoryRef.update({"amount": currentAmount + newAmount});
-            } else {
-              // Create a new document for the new category
-              await newCategoryRef.set({
-                "name": newCategory,
-                "amount": newAmount,
-                "updated_at": DateTime.now().toIso8601String(),
-              });
-            }
-
-            // Update the receipt in 'finance_log'
-            await FirebaseFirestore.instance.collection('finance_log').doc(docId).update({
-              "receipt_number": receiptController.text.trim(),
-              "name": nameController.text.trim(),
-              "phone": phoneController.text.trim(),
-              "amount": newAmount,
-              "category": newCategory,
-              "notes": noteController.text.trim(),
-            });
-            // Update category totals
-            await _updateTotalAmount(); // Recalculate total amount
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم تحديث الإيصال بنجاح!')),
-            );
-          },
-          child: const Text("حفظ"),
-        ),
-      ],
-    ),
-  );
-}
 
   String formatDateTime(String isoDate) {
     final dateTime = DateTime.parse(isoDate);
@@ -481,7 +382,7 @@ Future<void> _updateTotalAmount() async {
             ),
           ],
         ),
-        drawer: AdminDrawer(),
+        drawer: userDrawer(),
         body: Column(
           children: [
             Padding(
@@ -601,18 +502,8 @@ Future<void> _updateTotalAmount() async {
                                 icon: const Icon(Icons.print, color: Colors.teal),
                                 onPressed: () => _printReceipt(log),
                                 tooltip: "طباعة",
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _editReceipt(docId, log),
-                                tooltip: "تعديل",
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteReceipt(docId),
-                                tooltip: "حذف",
-                              ),
-                            ],
+                              ),                                                       
+                              ],
                           ),
                         ),
                       );
