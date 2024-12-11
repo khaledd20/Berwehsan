@@ -258,15 +258,20 @@ class _SubsPageState extends State<SubsPage> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => InsertSub()),
-            );
-          },
-          child: const Icon(Icons.add),
-        ),
+         floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to InsertSub and pass fetchSubs as onSubmit callback
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InsertSub(
+                onSubmit: fetchSubs,  // Pass the fetchSubs method as a callback
+              ),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
       ),
     );
   }

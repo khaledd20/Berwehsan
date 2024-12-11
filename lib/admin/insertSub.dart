@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InsertSub extends StatefulWidget {
   final Map<String, dynamic>? existingSub; // Pass existing data for editing
+  final VoidCallback onSubmit;  // Callback to refresh data after submit
 
-  const InsertSub({Key? key, this.existingSub}) : super(key: key);
+  const InsertSub({Key? key, this.existingSub, required this.onSubmit}) : super(key: key);
 
   @override
   _InsertSubState createState() => _InsertSubState();
@@ -16,10 +17,10 @@ class _InsertSubState extends State<InsertSub> {
   // Form fields
   final Map<String, dynamic> formData = {
     'name': '',
-    'description': '',
-    'phone': '',
-    'unit': '',
-    'active': '1',
+    'location': '',
+    'number': '',
+    'unite': 0,
+    'Active': 1,
   };
 
   @override
@@ -28,10 +29,10 @@ class _InsertSubState extends State<InsertSub> {
     if (widget.existingSub != null) {
       // Pre-fill form data for editing
       formData['name'] = widget.existingSub!['name'] ?? '';
-      formData['description'] = widget.existingSub!['description'] ?? '';
-      formData['phone'] = widget.existingSub!['phone'] ?? '';
-      formData['unit'] = widget.existingSub!['unit']?.toString() ?? '';
-      formData['active'] = widget.existingSub!['active']?.toString() ?? '1';
+      formData['location'] = widget.existingSub!['location'] ?? '';
+      formData['number'] = widget.existingSub!['number'] ?? '';
+      formData['unite'] = widget.existingSub!['unite'] ?? 0;
+      formData['Active'] = widget.existingSub!['Active'] ?? 1;
     }
   }
 
@@ -41,23 +42,35 @@ class _InsertSubState extends State<InsertSub> {
     _formKey.currentState!.save();
 
     try {
-      final url = widget.existingSub == null
-          ? Uri.parse('https://yourdomain.com/insert_sub.php') // Insert
-          : Uri.parse('https://yourdomain.com/update_sub.php'); // Update
+      final subsCollection = FirebaseFirestore.instance.collection('subs');
 
-      final response = await http.post(url, body: formData);
+      // Prepare the data to be inserted
+      Map<String, dynamic> subData = {
+        'Active': formData['Active'],
+        'case_count': 0,
+        'created_at': DateTime.now().toString(),
+        'id': DateTime.now().millisecondsSinceEpoch, // Use timestamp as id
+        'location': formData['location'],
+        'name': formData['name'],
+        'number': formData['number'],
+        'unite': int.tryParse(formData['unite'].toString()) ?? 0,
+        'pied_times': 0,
+        'updated_at': DateTime.now().toString(),
+      };
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ الكفالة بنجاح')),
-        );
-        Navigator.pop(context); // Close the form page
+      if (widget.existingSub == null) {
+        // Insert new document
+        await subsCollection.add(subData);
       } else {
-        print('Error: ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل حفظ البيانات')),
-        );
+        // Update existing document
+        await subsCollection.doc(widget.existingSub!['docId']).update(subData);
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الكفالة بنجاح')),
+      );
+      widget.onSubmit(); // Call the callback to refresh the page
+      Navigator.pop(context); // Close the form page
     } catch (error) {
       print('Error: $error');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,7 +88,7 @@ class _InsertSubState extends State<InsertSub> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
-        initialValue: formData[key],
+        initialValue: formData[key].toString(),
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
@@ -83,7 +96,7 @@ class _InsertSubState extends State<InsertSub> {
         keyboardType: inputType,
         validator: (value) =>
             value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
-        onSaved: (value) => formData[key] = value!,
+        onSaved: (value) => formData[key] = value ?? '',
       ),
     );
   }
@@ -110,11 +123,11 @@ class _InsertSubState extends State<InsertSub> {
                   buildTextField(label: 'الموقع', key: 'location'),
                   buildTextField(
                       label: 'رقم الهاتف',
-                      key: 'phone',
+                      key: 'number',
                       inputType: TextInputType.phone),
                   buildTextField(
                       label: 'الوحدة',
-                      key: 'unit',
+                      key: 'unite',
                       inputType: TextInputType.number),
                   const SizedBox(height: 20),
                   ElevatedButton(
