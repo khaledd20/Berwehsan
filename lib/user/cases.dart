@@ -72,7 +72,7 @@ class _CasesPageState extends State<CasesPage> {
               final name = caseData['name']?.toString().toLowerCase() ?? '';
               final id = caseData['id']?.toString();
 
-              if (RegExp(r'^\d+$').hasMatch(searchQuery)) {
+              if (RegExp(r'^\d+').hasMatch(searchQuery)) {
                 return id == searchQuery;
               }
 
@@ -84,6 +84,7 @@ class _CasesPageState extends State<CasesPage> {
               itemBuilder: (context, index) {
                 final caseData =
                     filteredCases[index].data() as Map<String, dynamic>;
+                final docId = filteredCases[index].id;
 
                 return Card(
                   elevation: 3,
@@ -107,8 +108,8 @@ class _CasesPageState extends State<CasesPage> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => CaseProfile(
-                                  caseId: int.parse(caseData['id'].toString()),
-                                ),
+                                    caseId:
+                                        int.parse(caseData['id'].toString())),
                               ),
                             );
                           },
@@ -139,6 +140,45 @@ class _CasesPageState extends State<CasesPage> {
     );
   }
 
+  /// Helper function to provide Arabic labels for each field
+  String _getArabicFieldLabel(String key) {
+    switch (key) {
+      case 'name':
+        return 'الاسم';
+      case 'location':
+        return 'العنوان';
+      case 'social_status':
+        return 'الحالة الاجتماعية';
+      case 'in_come':
+        return 'الدخل';
+      case 'family_count':
+        return 'عدد أفراد الأسرة';
+      case 'ID_Number':
+        return 'الرقم القومي';
+      case 'number':
+        return 'رقم الهاتف';
+      case 'c_size':
+        return 'مقاس الملابس';
+      case 'S_size':
+        return 'مقاس جهاز العروس';
+      case 'age':
+        return 'العمر';
+      case 'grade_id':
+        return 'المرحلة الدراسية';
+      case 'balance':
+        return 'القبض';
+      case 'area_id':
+        return 'رقم المنطقة';
+      case 'chest_ids':
+        return 'الصناديق';
+      case 'sub_ids':
+        return 'المشتركين';
+      default:
+        return key; // Fallback for unknown fields
+    }
+  }
+
+  /// Function to print all cases
   /// Function to print all cases
   Future<void> _printAllCases() async {
     try {

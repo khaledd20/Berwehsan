@@ -38,82 +38,6 @@ class _ItineraryPageState extends State<ItineraryPage> {
     }
   }
 
-  Future<void> addItinerary(BuildContext context) async {
-    final _formKey = GlobalKey<FormState>();
-    final Map<String, dynamic> formData = {
-      'name': '',
-      'from': '',
-      'to': '',
-      'cost': '',
-      'date': '',
-      'notes': '',
-    };
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('إضافة خط السير'),
-            content: Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    buildTextField('الاسم', 'أدخل الاسم', 'name', formData),
-                    buildTextField(
-                        'من', 'أدخل نقطة الانطلاق', 'from', formData),
-                    buildTextField('إلى', 'أدخل الوجهة', 'to', formData),
-                    buildTextField(
-                        'ثمن المواصلات', 'أدخل الثمن', 'cost', formData,
-                        inputType: TextInputType.number),
-                    buildTextField('التاريخ', 'أدخل التاريخ', 'date', formData),
-                    buildTextField(
-                        'ملاحظات', 'أدخل الملاحظات', 'notes', formData),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    _formKey.currentState!.save();
-                    try {
-                      // Save the new itinerary to Firestore
-                      await FirebaseFirestore.instance
-                          .collection('itineraries')
-                          .add(formData);
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('تم إضافة خط السير بنجاح')),
-                      );
-
-                      fetchItineraries();
-                      Navigator.pop(context);
-                    } catch (error) {
-                      print('Error adding itinerary: $error');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('خطأ أثناء الإضافة: $error')),
-                      );
-                    }
-                  }
-                },
-                child: const Text('حفظ'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget buildTextField(
       String label, String hint, String key, Map<String, dynamic> formData,
       {TextInputType inputType = TextInputType.text}) {
@@ -191,6 +115,8 @@ class _ItineraryPageState extends State<ItineraryPage> {
                           Text('إلى: ${itinerary['to']}'),
                           Text('التاريخ: ${itinerary['date']}'),
                           Text(
+                              'الوسيلة: ${itinerary['method'] ?? 'غير محددة'}'),
+                          Text(
                               'ثمن المواصلات: ${itinerary['cost']?.toString() ?? 'غير معروف'}'),
                           Text('ملحوظات: ${itinerary['notes']}'),
                         ],
@@ -205,10 +131,6 @@ class _ItineraryPageState extends State<ItineraryPage> {
               ),
             ),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.add),
         ),
       ),
     );

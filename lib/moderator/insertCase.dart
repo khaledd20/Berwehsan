@@ -171,7 +171,7 @@ class _InsertCaseState extends State<InsertCase> {
                 buildTextField('الرقم القومي', 'أدخل الرقم القومي', idNumberController),
                 buildTextField('رقم هاتف', 'أدخل رقم الهاتف', numberController, inputType: TextInputType.phone),
                 buildTextField('مقاس الملابس', 'أدخل مقاس الملابس', cSizeController),
-                buildTextField('مقاس جهاز العوسة', 'أدخل مقاس جهاز العوسة', sSizeController),
+                buildTextField('مقاس الحذاء', 'أدخل مقاس الحذاء', sSizeController),
                 buildTextField('العمر', 'أدخل العمر', ageController, inputType: TextInputType.number),
                 buildTextField('القبض', 'أدخل القبض', balanceController, inputType: TextInputType.number), // New balance field
                 buildAreaDropdown(),

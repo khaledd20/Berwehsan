@@ -147,7 +147,7 @@ class CaseProfile extends StatelessWidget {
       },
       {'label': 'مقاس الملابس:', 'value': caseData['c_size'] ?? 'غير معروف'},
       {
-        'label': 'مقاس جهاز العوسة:',
+        'label': 'مقاس الحذاء:',
         'value': caseData['S_size'] ?? 'غير معروف'
       },
       {'label': 'العمر:', 'value': caseData['age']?.toString() ?? 'غير معروف'},

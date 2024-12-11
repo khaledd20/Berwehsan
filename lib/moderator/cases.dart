@@ -1,3 +1,4 @@
+import 'package:berwehsan/moderator/editCase.dart';
 import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -72,7 +73,7 @@ class _CasesPageState extends State<CasesPage> {
               final name = caseData['name']?.toString().toLowerCase() ?? '';
               final id = caseData['id']?.toString();
 
-              if (RegExp(r'^\d+$').hasMatch(searchQuery)) {
+              if (RegExp(r'^\d+').hasMatch(searchQuery)) {
                 return id == searchQuery;
               }
 
@@ -105,7 +106,12 @@ class _CasesPageState extends State<CasesPage> {
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () {
-                            _editCase(context, docId, caseData);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditCase(caseId: docId),
+                              ),
+                            );
                           },
                         ),
                         ElevatedButton(
@@ -146,69 +152,42 @@ class _CasesPageState extends State<CasesPage> {
     );
   }
 
-  /// Function to edit a case
-  Future<void> _editCase(
-      BuildContext context, String docId, Map<String, dynamic> caseData) async {
-    final Map<String, TextEditingController> controllers = {};
-
-    caseData.forEach((key, value) {
-      if (key != 'id' && key != 'created_at' && key != 'updated_at') {
-        controllers[key] = TextEditingController(text: value?.toString() ?? '');
-      }
-    });
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('تعديل الحالة'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: controllers.keys.map((key) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: TextField(
-                      controller: controllers[key],
-                      decoration: InputDecoration(
-                        labelText: _getFieldLabel(key),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final updatedData = controllers
-                      .map((key, controller) => MapEntry(key, controller.text));
-
-                  updatedData['updated_at'] = DateTime.now().toIso8601String();
-
-                  await FirebaseFirestore.instance
-                      .collection('cases')
-                      .doc(docId)
-                      .update(updatedData);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم تعديل الحالة بنجاح')),
-                  );
-                },
-                child: const Text('تعديل'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  /// Helper function to provide Arabic labels for each field
+  String _getArabicFieldLabel(String key) {
+    switch (key) {
+      case 'name':
+        return 'الاسم';
+      case 'location':
+        return 'العنوان';
+      case 'social_status':
+        return 'الحالة الاجتماعية';
+      case 'in_come':
+        return 'الدخل';
+      case 'family_count':
+        return 'عدد أفراد الأسرة';
+      case 'ID_Number':
+        return 'الرقم القومي';
+      case 'number':
+        return 'رقم الهاتف';
+      case 'c_size':
+        return 'مقاس الملابس';
+      case 'S_size':
+        return 'مقاس جهاز الحذاء';
+      case 'age':
+        return 'العمر';
+      case 'grade_id':
+        return 'المرحلة الدراسية';
+      case 'balance':
+        return 'القبض';
+      case 'area_id':
+        return 'رقم المنطقة';
+      case 'chest_ids':
+        return 'الصناديق';
+      case 'sub_ids':
+        return 'المشتركين';
+      default:
+        return key; // Fallback for unknown fields
+    }
   }
 
   /// Function to print all cases

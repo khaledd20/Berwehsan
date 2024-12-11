@@ -21,7 +21,8 @@ class _InsertCaseState extends State<InsertCase> {
   final TextEditingController sSizeController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController gradeIdController = TextEditingController();
-  final TextEditingController balanceController = TextEditingController(); // New controller for `balance`
+  final TextEditingController balanceController =
+      TextEditingController(); // New controller for `balance`
 
   String? selectedAreaId;
   List<Map<String, dynamic>> areas = [];
@@ -40,7 +41,8 @@ class _InsertCaseState extends State<InsertCase> {
 
   Future<void> fetchAreas() async {
     try {
-      final areasSnapshot = await FirebaseFirestore.instance.collection('areas').get();
+      final areasSnapshot =
+          await FirebaseFirestore.instance.collection('areas').get();
       setState(() {
         areas = areasSnapshot.docs.map((doc) {
           return {
@@ -56,7 +58,8 @@ class _InsertCaseState extends State<InsertCase> {
 
   Future<void> fetchChests() async {
     try {
-      final chestsSnapshot = await FirebaseFirestore.instance.collection('chests').get();
+      final chestsSnapshot =
+          await FirebaseFirestore.instance.collection('chests').get();
       setState(() {
         chests = chestsSnapshot.docs.map((doc) {
           return {
@@ -72,7 +75,8 @@ class _InsertCaseState extends State<InsertCase> {
 
   Future<void> fetchSubs() async {
     try {
-      final subsSnapshot = await FirebaseFirestore.instance.collection('subs').get();
+      final subsSnapshot =
+          await FirebaseFirestore.instance.collection('subs').get();
       setState(() {
         subs = subsSnapshot.docs.map((doc) {
           return {
@@ -95,18 +99,20 @@ class _InsertCaseState extends State<InsertCase> {
         'name': nameController.text,
         'location': locationController.text,
         'social_status': socialStatusController.text,
-        'in_come': int.tryParse(incomeController.text) ?? 0, // Convert to integer
+        'in_come':
+            int.tryParse(incomeController.text) ?? 0, // Convert to integer
         'family_count': int.tryParse(familyCountController.text) ?? 0,
         'ID_Number': idNumberController.text,
         'number': numberController.text,
         'c_size': cSizeController.text,
         'S_size': sSizeController.text,
         'age': int.tryParse(ageController.text) ?? 0,
-        'grade_id': gradeIdController.text ,
+        'grade_id': gradeIdController.text,
         'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
         'chest_ids': selectedChestIds, // Store as numbers
         'sub_ids': selectedSubIds, // Store as numbers
-        'balance': int.tryParse(balanceController.text) ?? 0, // Parse and store as number
+        'balance': int.tryParse(balanceController.text) ??
+            0, // Parse and store as number
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
         'status': 'مفعل',
@@ -165,31 +171,46 @@ class _InsertCaseState extends State<InsertCase> {
               children: [
                 buildTextField('الاسم', 'أدخل الاسم', nameController),
                 buildTextField('العنوان', 'أدخل العنوان', locationController),
-                buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية', socialStatusController),
-                buildTextField('الدخل', 'أدخل الدخل', incomeController, inputType: TextInputType.number),
-                buildTextField('عدد أعضاء الأسرة', 'أدخل عدد أعضاء الأسرة', familyCountController, inputType: TextInputType.number),
-                buildTextField('الرقم القومي', 'أدخل الرقم القومي', idNumberController),
-                buildTextField('رقم هاتف', 'أدخل رقم الهاتف', numberController, inputType: TextInputType.phone),
-                buildTextField('مقاس الملابس', 'أدخل مقاس الملابس', cSizeController),
-                buildTextField('مقاس جهاز العوسة', 'أدخل مقاس جهاز العوسة', sSizeController),
-                buildTextField('العمر', 'أدخل العمر', ageController, inputType: TextInputType.number),
-                buildTextField('القبض', 'أدخل القبض', balanceController, inputType: TextInputType.number), // New balance field
+                buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية',
+                    socialStatusController),
+                buildTextField('الدخل', 'أدخل الدخل', incomeController,
+                    inputType: TextInputType.number),
+                buildTextField('عدد أعضاء الأسرة', 'أدخل عدد أعضاء الأسرة',
+                    familyCountController,
+                    inputType: TextInputType.number),
+                buildTextField(
+                    'الرقم القومي', 'أدخل الرقم القومي', idNumberController),
+                buildTextField('رقم هاتف', 'أدخل رقم الهاتف', numberController,
+                    inputType: TextInputType.phone),
+                buildTextField(
+                    'مقاس الملابس', 'أدخل مقاس الملابس', cSizeController),
+                buildTextField(
+                    'مقاس  الحذاء', 'أدخل مقاس  الحذاء', sSizeController),
+                buildTextField('العمر', 'أدخل العمر', ageController,
+                    inputType: TextInputType.number),
+                buildTextField('القبض', 'أدخل القبض', balanceController,
+                    inputType: TextInputType.number), // New balance field
                 buildAreaDropdown(),
-                buildMultiSelectDropdown('اختر الصناديق', chests, selectedChestIds),
-                buildMultiSelectDropdown('اختر المشتركين', subs, selectedSubIds),
-                buildTextField('المرحلة الدراسية', 'أدخل المرحلة الدراسية', gradeIdController),
+                buildMultiSelectDropdown(
+                    'اختر الصناديق', chests, selectedChestIds),
+                buildMultiSelectDropdown(
+                    'اختر المشتركين', subs, selectedSubIds),
+                buildTextField('المرحلة الدراسية', 'أدخل المرحلة الدراسية',
+                    gradeIdController),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      style:
+                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
                       child: const Text('إلغاء'),
                     ),
                     ElevatedButton(
                       onPressed: submitForm,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green),
                       child: const Text('حفظ'),
                     ),
                   ],
@@ -202,7 +223,9 @@ class _InsertCaseState extends State<InsertCase> {
     );
   }
 
-  Widget buildTextField(String label, String hint, TextEditingController controller, {TextInputType inputType = TextInputType.text}) {
+  Widget buildTextField(
+      String label, String hint, TextEditingController controller,
+      {TextInputType inputType = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -214,7 +237,8 @@ class _InsertCaseState extends State<InsertCase> {
           border: const OutlineInputBorder(),
         ),
         keyboardType: inputType,
-        validator: (value) => value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
+        validator: (value) =>
+            value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
       ),
     );
   }
@@ -234,7 +258,8 @@ class _InsertCaseState extends State<InsertCase> {
           labelText: 'المنطقة',
           border: OutlineInputBorder(),
         ),
-        validator: (value) => value == null || value.isEmpty ? 'يرجى اختيار المنطقة' : null,
+        validator: (value) =>
+            value == null || value.isEmpty ? 'يرجى اختيار المنطقة' : null,
         onChanged: (value) {
           setState(() {
             selectedAreaId = value;
@@ -244,7 +269,8 @@ class _InsertCaseState extends State<InsertCase> {
     );
   }
 
-  Widget buildMultiSelectDropdown(String label, List<Map<String, dynamic>> items, List<int> selectedItems) {
+  Widget buildMultiSelectDropdown(
+      String label, List<Map<String, dynamic>> items, List<int> selectedItems) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Card(

@@ -1,3 +1,4 @@
+import 'package:berwehsan/moderator/chestsHistory.dart';
 import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -88,6 +89,36 @@ class ChestsPageModerator extends StatelessWidget {
                                 child: const Text(
                                   'عرض الحالات',
                                   style: TextStyle(color: Colors.green),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          ItemDetailsChest(chestId: docId),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'تفاصيل الرصيد',
+                                  style: TextStyle(color: Colors.orange),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          ChestsHistoryPage(chestId: docId),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'سجل الصندوق',
+                                  style: TextStyle(color: Colors.purple),
                                 ),
                               ),
                             ],
@@ -458,6 +489,173 @@ class CasesForChestPage extends StatelessWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم طباعة بيانات الحالات بنجاح')),
+    );
+  }
+}
+
+class ItemDetailsChest extends StatelessWidget {
+  final String chestId;
+
+  const ItemDetailsChest({Key? key, required this.chestId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('تفاصيل الصندوق'),
+        centerTitle: true,
+      ),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('chests')
+            .doc(chestId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final int balance = data['balance'] ?? 0;
+          final String name = data['name'] ?? 'غير معروف';
+
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'اسم الصندوق: $name',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'الرصيد الحالي: $balance',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _updateChestBalance(context, chestId, balance,
+                            isAdd: true);
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('إضافة'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _updateChestBalance(context, chestId, balance,
+                            isAdd: false);
+                      },
+                      icon: const Icon(Icons.remove),
+                      label: const Text('سحب'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _updateChestBalance(
+      BuildContext context, String chestId, int currentBalance,
+      {required bool isAdd}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final TextEditingController balanceController = TextEditingController();
+
+        return AlertDialog(
+          title: Text(isAdd ? 'إضافة إلى الرصيد' : 'سحب من الرصيد'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('الرصيد الحالي: $currentBalance'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: balanceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'أدخل المبلغ',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final int updateAmount =
+                    int.tryParse(balanceController.text) ?? 0;
+
+                if (updateAmount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('أدخل مبلغًا صحيحًا أكبر من الصفر.')),
+                  );
+                  return;
+                }
+
+                final int beforeAmount = currentBalance;
+                final int afterAmount = isAdd
+                    ? currentBalance + updateAmount
+                    : (currentBalance - updateAmount >= 0
+                        ? currentBalance - updateAmount
+                        : 0);
+
+                final String currentTime = DateTime.now().toIso8601String();
+
+                // Update chest balance and add history log
+                await FirebaseFirestore.instance
+                    .collection('chests')
+                    .doc(chestId)
+                    .update({
+                  'balance': afterAmount,
+                  'updated_at': currentTime,
+                });
+
+                await FirebaseFirestore.instance.collection('chest_log').add({
+                  'chest_id': chestId,
+                  'amount': updateAmount,
+                  'status': isAdd ? 'in' : 'out',
+                  'before_amount': beforeAmount, // Save before amount
+                  'after_amount': afterAmount, // Save after amount
+                  'created_at': currentTime,
+                });
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isAdd
+                          ? 'تم إضافة $updateAmount بنجاح.'
+                          : 'تم سحب $updateAmount بنجاح.',
+                    ),
+                  ),
+                );
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -43,6 +43,24 @@ class _ItineraryPageState extends State<ItineraryPage> {
     final Map<String, dynamic> formData =
         Map<String, dynamic>.from(itineraryData);
 
+    DateTime selectedDate = itineraryData['date'] != null
+        ? DateTime.parse(itineraryData['date'])
+        : DateTime.now();
+
+    Future<void> _selectDate() async {
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: selectedDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      );
+
+      if (picked != null && picked != selectedDate) {
+        selectedDate = picked;
+        setState(() {}); // Update the UI
+      }
+    }
+
     await showDialog(
       context: context,
       builder: (context) {
@@ -64,7 +82,32 @@ class _ItineraryPageState extends State<ItineraryPage> {
                     buildTextField(
                         'ثمن المواصلات', 'أدخل الثمن', 'cost', formData,
                         inputType: TextInputType.number),
-                    buildTextField('التاريخ', 'أدخل التاريخ', 'date', formData),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            readOnly: true,
+                            controller: TextEditingController(
+                                text:
+                                    "${selectedDate.toLocal()}".split(' ')[0]),
+                            decoration: const InputDecoration(
+                              labelText: 'التاريخ',
+                              border: OutlineInputBorder(),
+                            ),
+                            onTap: _selectDate,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: _selectDate,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    buildTextField(
+                        'الوسيلة', 'أدخل الوسيلة', 'method', formData),
+                    const SizedBox(height: 10),
                     buildTextField(
                         'ملاحظات', 'أدخل الملاحظات', 'notes', formData),
                   ],
@@ -80,9 +123,10 @@ class _ItineraryPageState extends State<ItineraryPage> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
+                    formData['date'] = selectedDate.toIso8601String();
+
                     try {
                       if (itineraryData['docId'] != null) {
-                        // Update existing itinerary
                         await FirebaseFirestore.instance
                             .collection('itineraries')
                             .doc(itineraryData['docId'])
@@ -92,7 +136,6 @@ class _ItineraryPageState extends State<ItineraryPage> {
                               content: Text('تم تحديث خط السير بنجاح')),
                         );
                       } else {
-                        // Add new itinerary
                         await FirebaseFirestore.instance
                             .collection('itineraries')
                             .add(formData);
@@ -105,12 +148,9 @@ class _ItineraryPageState extends State<ItineraryPage> {
                       fetchItineraries();
                       Navigator.pop(context);
                     } catch (error) {
-                      print('Error saving itinerary: $error');
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('خطأ أثناء الحفظ: $error')),
-                        );
-                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('خطأ أثناء الحفظ: $error')),
+                      );
                     }
                   }
                 },
@@ -200,6 +240,8 @@ class _ItineraryPageState extends State<ItineraryPage> {
                           Text('إلى: ${itinerary['to']}'),
                           Text('التاريخ: ${itinerary['date']}'),
                           Text(
+                              'الوسيلة: ${itinerary['method'] ?? 'غير محددة'}'),
+                          Text(
                               'ثمن المواصلات: ${itinerary['cost']?.toString() ?? 'غير معروف'}'),
                           Text('ملحوظات: ${itinerary['notes']}'),
                         ],
@@ -222,16 +264,19 @@ class _ItineraryPageState extends State<ItineraryPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
+            print('FloatingActionButton clicked! Opening add dialog.');
             showEditDialog({
               'name': '',
               'from': '',
               'to': '',
               'cost': 0,
-              'date': '',
+              'date': DateTime.now().toIso8601String(),
+              'method': '', // Default transport method
               'notes': '',
             });
           },
           child: const Icon(Icons.add),
+          tooltip: 'إضافة خط سير جديد',
         ),
       ),
     );
