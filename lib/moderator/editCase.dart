@@ -12,6 +12,7 @@ class EditCase extends StatefulWidget {
 
 class _EditCaseState extends State<EditCase> {
   final _formKey = GlobalKey<FormState>();
+  bool isLoading = false; // Flag to track submission status
 
   // Controllers for all fields
   final TextEditingController idController =
@@ -148,84 +149,222 @@ class _EditCaseState extends State<EditCase> {
     });
   }
 
-  // Submit updated data
+   // Submit updated data
   Future<void> submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+  if (isLoading) return;
+  setState(() {
+    isLoading = true;
+  });
 
-    final newId = int.tryParse(idController.text);
-    if (newId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال معرف صالح')),
-      );
-      return;
-    }
+  // Perform manual validation for all fields
+  if (nameController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال الاسم');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (motherNameController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال اسم الأم');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (locationController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال العنوان');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (socialStatusController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال الحالة الاجتماعية');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (incomeController.text.trim().isEmpty ||
+      int.tryParse(incomeController.text.trim()) == null) {
+    _showError('الرجاء إدخال الدخل (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (familyCountController.text.trim().isEmpty ||
+      int.tryParse(familyCountController.text.trim()) == null) {
+    _showError('الرجاء إدخال عدد أفراد الأسرة (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (idNumberController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال الرقم القومي');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (numberController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال رقم الهاتف');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (cSizeController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال مقاس الملابس');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (sSizeController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال مقاس الحذاء');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (ageController.text.trim().isEmpty ||
+      int.tryParse(ageController.text.trim()) == null) {
+    _showError('الرجاء إدخال العمر (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (balanceController.text.trim().isEmpty ||
+      int.tryParse(balanceController.text.trim()) == null) {
+    _showError('الرجاء إدخال القبض (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (gradeIdController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال المرحلة الدراسية');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
 
-    try {
-      // Fetch current case
-      final currentSnapshot = await FirebaseFirestore.instance
-          .collection('cases')
-          .doc(widget.caseId)
-          .get();
+  // Additional validations for selectedAreaId, selectedChestIds, and selectedSubIds
+  if (selectedAreaId == null || selectedAreaId!.isEmpty) {
+    _showError('يرجى اختيار المنطقة');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
 
-      final currentData = currentSnapshot.data();
-      final oldId = currentData?['id'] ?? newId;
+  if (selectedChestIds.isEmpty) {
+    _showError('يرجى اختيار صندوق واحد على الأقل');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
 
-      // Check if the new ID already exists in another case
-      final existingSnapshot = await FirebaseFirestore.instance
-          .collection('cases')
-          .where('id', isEqualTo: newId)
-          .get();
+  if (selectedSubIds.isEmpty) {
+    _showError('يرجى اختيار مشترك واحد على الأقل');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
 
-      if (existingSnapshot.docs.isNotEmpty) {
-        // Switch IDs if another case already has the new ID
-        final otherCaseId = existingSnapshot.docs.first.id;
+  final newId = int.tryParse(idController.text);
+  if (newId == null) {
+    _showError('الرجاء إدخال معرف صالح');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
 
-        await FirebaseFirestore.instance
-            .collection('cases')
-            .doc(otherCaseId)
-            .update({'id': oldId}); // Swap ID with the other case
-      }
+  try {
+    // Fetch current case
+    final currentSnapshot = await FirebaseFirestore.instance
+        .collection('cases')
+        .doc(widget.caseId)
+        .get();
 
-      // Update the current case with the new ID and form data
-      final formData = {
-        'id': newId, // Update the ID
-        'name': nameController.text,
-        'mother_name': motherNameController.text, // Add mother's name
-        'location': locationController.text,
-        'social_status': socialStatusController.text,
-        'in_come': int.tryParse(incomeController.text) ?? 0,
-        'family_count': int.tryParse(familyCountController.text) ?? 0,
-        'ID_Number': idNumberController.text,
-        'number': numberController.text,
-        'c_size': cSizeController.text,
-        'S_size': sSizeController.text,
-        'age': int.tryParse(ageController.text) ?? 0,
-        'grade_id': gradeIdController.text,
-        'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
-        'chest_ids': selectedChestIds,
-        'sub_ids': selectedSubIds,
-        'balance': int.tryParse(balanceController.text) ?? 0,
-        'updated_at': DateTime.now().toIso8601String(),
-      };
+    final currentData = currentSnapshot.data();
+    final oldId = currentData?['id'] ?? newId;
+
+    // Check if the new ID already exists in another case
+    final existingSnapshot = await FirebaseFirestore.instance
+        .collection('cases')
+        .where('id', isEqualTo: newId)
+        .get();
+
+    if (existingSnapshot.docs.isNotEmpty) {
+      // Switch IDs if another case already has the new ID
+      final otherCaseId = existingSnapshot.docs.first.id;
 
       await FirebaseFirestore.instance
           .collection('cases')
-          .doc(widget.caseId)
-          .update(formData);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تحديث الحالة بنجاح')),
-      );
-
-      Navigator.pop(context);
-    } catch (error) {
-      print('Error updating case: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $error')),
-      );
+          .doc(otherCaseId)
+          .update({'id': oldId}); // Swap ID with the other case
     }
-  }
 
+    // Update the current case with the new ID and form data
+    final formData = {
+      'id': newId, // Update the ID
+      'name': nameController.text,
+      'mother_name': motherNameController.text,
+      'location': locationController.text,
+      'social_status': socialStatusController.text,
+      'in_come': int.tryParse(incomeController.text) ?? 0,
+      'family_count': int.tryParse(familyCountController.text) ?? 0,
+      'ID_Number': idNumberController.text,
+      'number': numberController.text,
+      'c_size': cSizeController.text,
+      'S_size': sSizeController.text,
+      'age': int.tryParse(ageController.text) ?? 0,
+      'grade_id': gradeIdController.text,
+      'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
+      'chest_ids': selectedChestIds,
+      'sub_ids': selectedSubIds,
+      'balance': int.tryParse(balanceController.text) ?? 0,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('cases')
+        .doc(widget.caseId)
+        .update(formData);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم تحديث الحالة بنجاح')),
+    );
+
+    Navigator.pop(context);
+  } catch (error) {
+    print('Error updating case: $error');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('حدث خطأ: $error')),
+    );
+  } finally {
+    setState(() {
+      isLoading = false;
+    });
+  }
+}
+// Helper function to show error messages
+void _showError(String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

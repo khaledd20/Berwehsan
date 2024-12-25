@@ -2,6 +2,8 @@ import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html;
+import 'package:intl/intl.dart';
+import 'dart:ui' as ui; // For ui.TextDirection
 
 class ItineraryPage extends StatefulWidget {
   @override
@@ -11,6 +13,8 @@ class ItineraryPage extends StatefulWidget {
 class _ItineraryPageState extends State<ItineraryPage> {
   List<Map<String, dynamic>> itineraries = [];
   String searchQuery = '';
+  DateTime? startDate;
+  DateTime? endDate;
 
   @override
   void initState() {
@@ -19,24 +23,38 @@ class _ItineraryPageState extends State<ItineraryPage> {
   }
 
   Future<void> fetchItineraries() async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('itineraries')
-          .where('name', isGreaterThanOrEqualTo: searchQuery)
-          .get();
+  try {
+    Query query = FirebaseFirestore.instance.collection('itineraries');
 
-      if (!mounted) return;
-
-      setState(() {
-        itineraries = querySnapshot.docs
-            .map((doc) =>
-                {'docId': doc.id, ...doc.data() as Map<String, dynamic>})
-            .toList();
-      });
-    } catch (error) {
-      print('Error fetching itineraries: $error');
+    if (searchQuery.isNotEmpty) {
+      query = query.where('name', isGreaterThanOrEqualTo: searchQuery);
     }
+
+    if (startDate != null || endDate != null) {
+      query = query.where('date', isNotEqualTo: null);
+    }
+    if (startDate != null) {
+      query = query.where('date', isGreaterThanOrEqualTo: startDate!.toIso8601String());
+    }
+    if (endDate != null) {
+      query = query.where('date', isLessThanOrEqualTo: endDate!.toIso8601String());
+    }
+
+    QuerySnapshot querySnapshot = await query.get();
+
+    if (!mounted) return;
+
+    setState(() {
+      itineraries = querySnapshot.docs
+          .map((doc) =>
+              {'docId': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+    });
+  } catch (error) {
+    print('Error fetching itineraries: $error');
   }
+}
+
 
   Future<void> deleteItinerary(String id) async {
     try {
@@ -87,7 +105,7 @@ class _ItineraryPageState extends State<ItineraryPage> {
       context: context,
       builder: (context) {
         return Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: ui.TextDirection.rtl,
           child: AlertDialog(
             title: Text(itineraryData['docId'] != null
                 ? 'تعديل خط السير'
@@ -214,7 +232,7 @@ class _ItineraryPageState extends State<ItineraryPage> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: ui.TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('جدول خط السير'),
@@ -245,6 +263,69 @@ class _ItineraryPageState extends State<ItineraryPage> {
                 },
               ),
             ),
+            Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        startDate != null
+                            ? 'من: ${DateFormat('yyyy-MM-dd').format(startDate!)}'
+                            : 'اختر تاريخ البداية',
+                      ),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: startDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            startDate = picked;
+                            fetchItineraries();
+                          });
+                        }
+                      },
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        endDate != null
+                            ? 'إلى: ${DateFormat('yyyy-MM-dd').format(endDate!)}'
+                            : 'اختر تاريخ النهاية',
+                      ),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: endDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            endDate = picked;
+                            fetchItineraries();
+                          });
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'إعادة تعيين التواريخ',
+                      onPressed: () {
+                        setState(() {
+                          startDate = null;
+                          endDate = null;
+                          fetchItineraries();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: ListView.builder(
                 itemCount: itineraries.length,
@@ -260,7 +341,7 @@ class _ItineraryPageState extends State<ItineraryPage> {
                         children: [
                           Text('من: ${itinerary['from']}'),
                           Text('إلى: ${itinerary['to']}'),
-                          Text('التاريخ: ${itinerary['date']}'),
+                          Text('التاريخ: ${itinerary['date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(itinerary['date'])) : 'غير متوفر'}'),
                           Text(
                               'الوسيلة: ${itinerary['method'] ?? 'غير محددة'}'),
                           Text(
@@ -355,15 +436,24 @@ class _ItineraryPageState extends State<ItineraryPage> {
 
     try {
       // Fetch itineraries data
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('itineraries')
-          .where('name', isGreaterThanOrEqualTo: searchQuery)
-          .get();
+      var query = FirebaseFirestore.instance.collection('itineraries').where('name', isGreaterThanOrEqualTo: searchQuery);
+
+      if (startDate != null) {
+        query = query.where('date', isGreaterThanOrEqualTo: startDate!.toIso8601String());
+      }
+
+      if (endDate != null) {
+        query = query.where('date', isLessThanOrEqualTo: endDate!.toIso8601String());
+      }
+
+      final querySnapshot = await query.get();
+
 
       for (var itinerary in querySnapshot.docs) {
         final data = itinerary.data();
         buffer.writeln(
-            '<tr><td>${data['name'] ?? 'غير معروف'}</td><td>${data['from'] ?? '-'}</td><td>${data['to'] ?? '-'}</td><td>${data['date'] ?? '-'}</td><td>${data['cost']?.toString() ?? '0'}</td><td>${data['notes'] ?? '-'}</td></tr>');
+    '<tr><td>${data['name'] ?? 'غير معروف'}</td><td>${data['from'] ?? '-'}</td><td>${data['to'] ?? '-'}</td><td>${data['date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['date'])) : '-'}</td><td>${data['cost']?.toString() ?? '0'}</td><td>${data['notes'] ?? '-'}</td></tr>');
+
       }
     } catch (e) {
       buffer

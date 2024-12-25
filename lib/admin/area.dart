@@ -115,77 +115,69 @@ class AreasPage extends StatelessWidget {
 
   /// Function to add a new area
   Future<void> _addArea(BuildContext context) async {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
+  final nameController = TextEditingController();
 
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('إضافة منطقة جديدة'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'اسم المنطقة'),
-                ),
-              ],
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إضافة منطقة جديدة'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: 'اسم المنطقة'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameController.text.isNotEmpty &&
-                      descriptionController.text.isNotEmpty) {
-                    try {
-                      final querySnapshot = await FirebaseFirestore.instance
-                          .collection('areas')
-                          .orderBy('id', descending: true)
-                          .limit(1)
-                          .get();
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  try {
+                    final querySnapshot = await FirebaseFirestore.instance
+                        .collection('areas')
+                        .orderBy('id', descending: true)
+                        .limit(1)
+                        .get();
 
-                      int nextId = 1;
-                      if (querySnapshot.docs.isNotEmpty) {
-                        final lastArea = querySnapshot.docs.first.data();
-                        nextId = (lastArea['id'] ?? 0) + 1;
-                      }
-
-                      await FirebaseFirestore.instance.collection('areas').add({
-                        'name': nameController.text,
-                        'description': descriptionController.text,
-                        'created_at': DateTime.now().toIso8601String(),
-                        'updated_at': DateTime.now().toIso8601String(),
-                        'id': nextId,
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم إضافة المنطقة بنجاح')),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('حدث خطأ: $e')),
-                      );
+                    int nextId = 1;
+                    if (querySnapshot.docs.isNotEmpty) {
+                      final lastArea = querySnapshot.docs.first.data();
+                      nextId = (lastArea['id'] ?? 0) + 1;
                     }
-                  } else {
+
+                    await FirebaseFirestore.instance.collection('areas').add({
+                      'name': nameController.text,
+                      'created_at': DateTime.now().toIso8601String(),
+                      'updated_at': DateTime.now().toIso8601String(),
+                      'id': nextId,
+                    });
+                    Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('يرجى ملء جميع الحقول')),
+                      const SnackBar(content: Text('تم إضافة المنطقة بنجاح')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('حدث خطأ: $e')),
                     );
                   }
-                },
-                child: const Text('إضافة'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('يرجى ملء جميع الحقول')),
+                  );
+                }
+              },
+              child: const Text('إضافة'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   /// Function to delete an area
   Future<void> _deleteArea(BuildContext context, String docId) async {

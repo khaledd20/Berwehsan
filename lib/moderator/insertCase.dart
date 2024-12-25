@@ -117,75 +117,188 @@ void filterSubs(String query) {
 
 
   Future<void> submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+  // Start loading state
+  if (isLoading) return;
+  setState(() {
+    isLoading = true;
+  });
+
+  // Perform manual validation for all fields
+  if (nameController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال الاسم');
     setState(() {
-    isLoading = true; // Start loading
+      isLoading = false;
     });
-
-    try {
-      // Collect all field values
-      final formData = {
-        'name': nameController.text,
-        'mother_name': motherNameController.text, // Add mother's name to Firestore
-        'location': locationController.text,
-        'social_status': socialStatusController.text,
-        'in_come': int.tryParse(incomeController.text) ?? 0, // Convert to integer
-        'family_count': int.tryParse(familyCountController.text) ?? 0,
-        'ID_Number': idNumberController.text,
-        'number': numberController.text,
-        'c_size': cSizeController.text,
-        'S_size': sSizeController.text,
-        'age': int.tryParse(ageController.text) ?? 0,
-        'grade_id': gradeIdController.text ,
-        'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
-        'chest_ids': selectedChestIds, // Store as numbers
-        'sub_ids': selectedSubIds, // Store as numbers
-        'balance': int.tryParse(balanceController.text) ?? 0, // Parse and store as number
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-        'status': 'مفعل',
-      };
-
-      // Generate the smallest available ID starting from 1
-      int nextId = 1;
-      bool idExists = true;
-
-      while (idExists) {
-        final existingCase = await FirebaseFirestore.instance
-            .collection('cases')
-            .where('id', isEqualTo: nextId)
-            .get();
-
-        if (existingCase.docs.isEmpty) {
-          idExists = false; // ID is available
-        } else {
-          nextId++; // Check the next ID
-        }
-      }
-
-      formData['id'] = nextId;
-
-      // Save the data to Firestore
-      final docRef = FirebaseFirestore.instance.collection('cases').doc();
-      await docRef.set(formData);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
-      );
-
-      Navigator.pop(context);
-    } catch (error) {
-      print('Error during submission: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
-      );
-    }
-    finally {
-    setState(() {
-      isLoading = false; // Stop loading
-    });
-    }
+    return;
   }
+  if (motherNameController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال اسم الأم');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (locationController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال العنوان');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (socialStatusController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال الحالة الاجتماعية');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (incomeController.text.trim().isEmpty ||
+      int.tryParse(incomeController.text.trim()) == null) {
+    _showError('الرجاء إدخال الدخل (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (familyCountController.text.trim().isEmpty ||
+      int.tryParse(familyCountController.text.trim()) == null) {
+    _showError('الرجاء إدخال عدد أفراد الأسرة (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (idNumberController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال الرقم القومي');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (numberController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال رقم الهاتف');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (cSizeController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال مقاس الملابس');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (sSizeController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال مقاس الحذاء');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (ageController.text.trim().isEmpty ||
+      int.tryParse(ageController.text.trim()) == null) {
+    _showError('الرجاء إدخال العمر (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (balanceController.text.trim().isEmpty ||
+      int.tryParse(balanceController.text.trim()) == null) {
+    _showError('الرجاء إدخال القبض (رقم صحيح)');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+  if (gradeIdController.text.trim().isEmpty) {
+    _showError('الرجاء إدخال المرحلة الدراسية');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+
+  // Additional validations for selectedAreaId, selectedChestIds, and selectedSubIds
+  if (selectedAreaId == null || selectedAreaId!.isEmpty) {
+    _showError('يرجى اختيار المنطقة');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+
+  if (selectedChestIds.isEmpty) {
+    _showError('يرجى اختيار صندوق واحد على الأقل');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+
+  if (selectedSubIds.isEmpty) {
+    _showError('يرجى اختيار مشترك واحد على الأقل');
+    setState(() {
+      isLoading = false;
+    });
+    return;
+  }
+
+  // If all validations pass, proceed with saving
+  try {
+    final formData = {
+      'name': nameController.text,
+      'mother_name': motherNameController.text,
+      'location': locationController.text,
+      'social_status': socialStatusController.text,
+      'in_come': int.tryParse(incomeController.text) ?? 0,
+      'family_count': int.tryParse(familyCountController.text) ?? 0,
+      'ID_Number': idNumberController.text,
+      'number': numberController.text,
+      'c_size': cSizeController.text,
+      'S_size': sSizeController.text,
+      'age': int.tryParse(ageController.text) ?? 0,
+      'grade_id': gradeIdController.text,
+      'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
+      'chest_ids': selectedChestIds,
+      'sub_ids': selectedSubIds,
+      'balance': int.tryParse(balanceController.text) ?? 0,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+      'status': 'مفعل',
+    };
+
+    // Save the data to Firestore
+    final docRef = FirebaseFirestore.instance.collection('cases').doc();
+    await docRef.set(formData);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
+    );
+
+    Navigator.pop(context);
+  } catch (error) {
+    print('Error during submission: $error');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
+    );
+  } finally {
+    setState(() {
+      isLoading = false;
+    });
+  }
+}
+
+// Helper function to show error messages
+void _showError(String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

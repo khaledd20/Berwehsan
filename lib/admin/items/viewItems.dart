@@ -182,54 +182,78 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
   }
 
   void _printItems() async {
-    final snapshot = await FirebaseFirestore.instance.collection('items').get();
-    final filteredItems = snapshot.docs.where((item) {
-      final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
-      final String name = data['name'] ?? '';
-      final String note = data['note'] ?? '';
+  final snapshot = await FirebaseFirestore.instance.collection('items').get();
+  final filteredItems = snapshot.docs.where((item) {
+    final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
+    final String name = data['name'] ?? '';
+    final String note = data['note'] ?? '';
 
-      // Apply filters
-      final matchesName = name.contains(nameFilter);
-      final matchesNote = note.contains(noteFilter);
-      return matchesName && matchesNote;
-    }).toList();
+    // Apply filters
+    final matchesName = name.contains(nameFilter);
+    final matchesNote = note.contains(noteFilter);
+    return matchesName && matchesNote;
+  }).toList();
 
-    final date = DateFormat('dd MMMM yyyy', 'ar').format(DateTime.now());
-    final StringBuffer buffer = StringBuffer();
+  final date = DateFormat('dd MMMM yyyy', 'ar').format(DateTime.now());
+  final StringBuffer buffer = StringBuffer();
 
-    // Add UTF-8 encoding to the HTML
-    buffer.writeln('<html>');
-    buffer.writeln('<head>');
-    buffer.writeln('<meta charset="UTF-8">'); // Ensure proper encoding
-    buffer.writeln('<title>طباعة العناصر</title>');
-    buffer.writeln('</head>');
-    buffer.writeln(
-        '<body style="direction: rtl; font-family: Arial, sans-serif;">');
-    buffer.writeln('<h2>التاريخ: $date</h2>');
-    buffer.writeln('<h3>العناصر:</h3>');
+  // Add UTF-8 encoding to the HTML
+  buffer.writeln('<html>');
+  buffer.writeln('<head>');
+  buffer.writeln('<meta charset="UTF-8">'); // Ensure proper encoding
+  buffer.writeln('<title>طباعة العناصر</title>');
+  buffer.writeln('<style>');
+  buffer.writeln(
+      'table { width: 100%; border-collapse: collapse; margin: 20px 0; }');
+  buffer.writeln(
+      'th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }');
+  buffer.writeln('th { background-color: #f2f2f2; }');
+  buffer.writeln('</style>');
+  buffer.writeln('</head>');
+  buffer.writeln(
+      '<body style="direction: rtl; font-family: Arial, sans-serif;">');
+  buffer.writeln('<h2>التاريخ: $date</h2>');
+  buffer.writeln('<h3>العناصر:</h3>');
 
-    for (final item in filteredItems) {
-      final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
-      final String name = data['name'];
-      final int count = data['count'];
-      final String note = data.containsKey('note') && data['note'] != null
-          ? data['note']
-          : 'لا توجد ملاحظات';
+  // Build table header
+  buffer.writeln('<table>');
+  buffer.writeln('<thead>');
+  buffer.writeln('<tr>');
+  buffer.writeln('<th>الاسم</th>');
+  buffer.writeln('<th>العدد</th>');
+  buffer.writeln('<th>الملاحظات</th>');
+  buffer.writeln('</tr>');
+  buffer.writeln('</thead>');
+  buffer.writeln('<tbody>');
 
-      buffer.writeln('<p><strong>الاسم:</strong> $name</p>');
-      buffer.writeln('<p><strong>العدد:</strong> $count</p>');
-      buffer.writeln('<p><strong>ملاحظات:</strong> $note</p>');
-      buffer.writeln('<hr>');
-    }
+  // Add rows for each filtered item
+  for (final item in filteredItems) {
+    final Map<String, dynamic> data = item.data() as Map<String, dynamic>;
+    final String name = data['name'];
+    final int count = data['count'];
+    final String note = data.containsKey('note') && data['note'] != null
+        ? data['note']
+        : 'لا توجد ملاحظات';
 
-    buffer.writeln('</body>');
-    buffer.writeln('</html>');
-
-    final html.Blob blob = html.Blob([buffer.toString()], 'text/html');
-    final String url = html.Url.createObjectUrlFromBlob(blob);
-    html.window.open(url, '_blank'); // Open in a new tab
-    html.Url.revokeObjectUrl(url);
+    buffer.writeln('<tr>');
+    buffer.writeln('<td>$name</td>');
+    buffer.writeln('<td>$count</td>');
+    buffer.writeln('<td>$note</td>');
+    buffer.writeln('</tr>');
   }
+
+  buffer.writeln('</tbody>');
+  buffer.writeln('</table>');
+
+  buffer.writeln('</body>');
+  buffer.writeln('</html>');
+
+  final html.Blob blob = html.Blob([buffer.toString()], 'text/html');
+  final String url = html.Url.createObjectUrlFromBlob(blob);
+  html.window.open(url, '_blank'); // Open in a new tab
+  html.Url.revokeObjectUrl(url);
+}
+
 
   void _confirmDelete(BuildContext context, String itemId) {
     showDialog(

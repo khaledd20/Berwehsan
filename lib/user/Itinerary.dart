@@ -2,6 +2,8 @@ import 'package:berwehsan/widgets/user_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html;
+import 'package:intl/intl.dart';
+import 'dart:ui' as ui; // For ui.TextDirection
 
 class ItineraryPage extends StatefulWidget {
   @override
@@ -11,6 +13,8 @@ class ItineraryPage extends StatefulWidget {
 class _ItineraryPageState extends State<ItineraryPage> {
   List<Map<String, dynamic>> itineraries = [];
   String searchQuery = '';
+  DateTime? startDate;
+  DateTime? endDate;
 
   @override
   void initState() {
@@ -19,23 +23,164 @@ class _ItineraryPageState extends State<ItineraryPage> {
   }
 
   Future<void> fetchItineraries() async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('itineraries')
-          .where('name', isGreaterThanOrEqualTo: searchQuery)
-          .get();
+  try {
+    Query query = FirebaseFirestore.instance.collection('itineraries');
 
-      if (!mounted) return;
-
-      setState(() {
-        itineraries = querySnapshot.docs
-            .map((doc) =>
-                {'docId': doc.id, ...doc.data() as Map<String, dynamic>})
-            .toList();
-      });
-    } catch (error) {
-      print('Error fetching itineraries: $error');
+    if (searchQuery.isNotEmpty) {
+      query = query.where('name', isGreaterThanOrEqualTo: searchQuery);
     }
+
+    if (startDate != null || endDate != null) {
+      query = query.where('date', isNotEqualTo: null);
+    }
+    if (startDate != null) {
+      query = query.where('date', isGreaterThanOrEqualTo: startDate!.toIso8601String());
+    }
+    if (endDate != null) {
+      query = query.where('date', isLessThanOrEqualTo: endDate!.toIso8601String());
+    }
+
+    QuerySnapshot querySnapshot = await query.get();
+
+    if (!mounted) return;
+
+    setState(() {
+      itineraries = querySnapshot.docs
+          .map((doc) =>
+              {'docId': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+    });
+  } catch (error) {
+    print('Error fetching itineraries: $error');
+  }
+}
+
+
+  
+
+  Future<void> showEditDialog(Map<String, dynamic> itineraryData) async {
+    final _formKey = GlobalKey<FormState>();
+    final Map<String, dynamic> formData =
+        Map<String, dynamic>.from(itineraryData);
+
+    DateTime selectedDate = itineraryData['date'] != null
+        ? DateTime.parse(itineraryData['date'])
+        : DateTime.now();
+
+    Future<void> _selectDate() async {
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: selectedDate,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      );
+
+      if (picked != null && picked != selectedDate) {
+        selectedDate = picked;
+        setState(() {}); // Update the UI
+      }
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Directionality(
+          textDirection: ui.TextDirection.rtl,
+          child: AlertDialog(
+            title: Text(itineraryData['docId'] != null
+                ? 'تعديل خط السير'
+                : 'إضافة خط السير'),
+            content: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    buildTextField('الاسم', 'أدخل الاسم', 'name', formData),
+                    buildTextField(
+                        'من', 'أدخل نقطة الانطلاق', 'from', formData),
+                    buildTextField('إلى', 'أدخل الوجهة', 'to', formData),
+                    buildTextField(
+                        'ثمن المواصلات', 'أدخل الثمن', 'cost', formData,
+                        inputType: TextInputType.number),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            readOnly: true,
+                            controller: TextEditingController(
+                                text:
+                                    "${selectedDate.toLocal()}".split(' ')[0]),
+                            decoration: const InputDecoration(
+                              labelText: 'التاريخ',
+                              border: OutlineInputBorder(),
+                            ),
+                            onTap: _selectDate,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: _selectDate,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    buildTextField(
+                        'الوسيلة', 'أدخل الوسيلة', 'method', formData),
+                    const SizedBox(height: 10),
+                    buildTextField(
+                        'ملاحظات', 'أدخل الملاحظات', 'notes', formData),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    _formKey.currentState!.save();
+                    formData['date'] = selectedDate.toIso8601String();
+
+                    try {
+                      if (itineraryData['docId'] != null) {
+                        await FirebaseFirestore.instance
+                            .collection('itineraries')
+                            .doc(itineraryData['docId'])
+                            .update(formData);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('تم تحديث خط السير بنجاح')),
+                        );
+                      } else {
+                        await FirebaseFirestore.instance
+                            .collection('itineraries')
+                            .add(formData);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('تم إضافة خط السير بنجاح')),
+                        );
+                      }
+
+                      fetchItineraries();
+                      Navigator.pop(context);
+                    } catch (error) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('خطأ أثناء الحفظ: $error')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('حفظ'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget buildTextField(
@@ -67,7 +212,7 @@ class _ItineraryPageState extends State<ItineraryPage> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: ui.TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('جدول خط السير'),
@@ -98,6 +243,69 @@ class _ItineraryPageState extends State<ItineraryPage> {
                 },
               ),
             ),
+            Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        startDate != null
+                            ? 'من: ${DateFormat('yyyy-MM-dd').format(startDate!)}'
+                            : 'اختر تاريخ البداية',
+                      ),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: startDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            startDate = picked;
+                            fetchItineraries();
+                          });
+                        }
+                      },
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        endDate != null
+                            ? 'إلى: ${DateFormat('yyyy-MM-dd').format(endDate!)}'
+                            : 'اختر تاريخ النهاية',
+                      ),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: endDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            endDate = picked;
+                            fetchItineraries();
+                          });
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'إعادة تعيين التواريخ',
+                      onPressed: () {
+                        setState(() {
+                          startDate = null;
+                          endDate = null;
+                          fetchItineraries();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: ListView.builder(
                 itemCount: itineraries.length,
@@ -113,7 +321,7 @@ class _ItineraryPageState extends State<ItineraryPage> {
                         children: [
                           Text('من: ${itinerary['from']}'),
                           Text('إلى: ${itinerary['to']}'),
-                          Text('التاريخ: ${itinerary['date']}'),
+                          Text('التاريخ: ${itinerary['date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(itinerary['date'])) : 'غير متوفر'}'),
                           Text(
                               'الوسيلة: ${itinerary['method'] ?? 'غير محددة'}'),
                           Text(
@@ -123,7 +331,10 @@ class _ItineraryPageState extends State<ItineraryPage> {
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [],
+                        children: [
+                          
+                          
+                        ],
                       ),
                     ),
                   );
@@ -131,6 +342,22 @@ class _ItineraryPageState extends State<ItineraryPage> {
               ),
             ),
           ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            print('FloatingActionButton clicked! Opening add dialog.');
+            showEditDialog({
+              'name': '',
+              'from': '',
+              'to': '',
+              'cost': 0,
+              'date': DateTime.now().toIso8601String(),
+              'method': '', // Default transport method
+              'notes': '',
+            });
+          },
+          child: const Icon(Icons.add),
+          tooltip: 'إضافة خط سير جديد',
         ),
       ),
     );
@@ -161,15 +388,24 @@ class _ItineraryPageState extends State<ItineraryPage> {
 
     try {
       // Fetch itineraries data
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('itineraries')
-          .where('name', isGreaterThanOrEqualTo: searchQuery)
-          .get();
+      var query = FirebaseFirestore.instance.collection('itineraries').where('name', isGreaterThanOrEqualTo: searchQuery);
+
+      if (startDate != null) {
+        query = query.where('date', isGreaterThanOrEqualTo: startDate!.toIso8601String());
+      }
+
+      if (endDate != null) {
+        query = query.where('date', isLessThanOrEqualTo: endDate!.toIso8601String());
+      }
+
+      final querySnapshot = await query.get();
+
 
       for (var itinerary in querySnapshot.docs) {
         final data = itinerary.data();
         buffer.writeln(
-            '<tr><td>${data['name'] ?? 'غير معروف'}</td><td>${data['from'] ?? '-'}</td><td>${data['to'] ?? '-'}</td><td>${data['date'] ?? '-'}</td><td>${data['cost']?.toString() ?? '0'}</td><td>${data['notes'] ?? '-'}</td></tr>');
+    '<tr><td>${data['name'] ?? 'غير معروف'}</td><td>${data['from'] ?? '-'}</td><td>${data['to'] ?? '-'}</td><td>${data['date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['date'])) : '-'}</td><td>${data['cost']?.toString() ?? '0'}</td><td>${data['notes'] ?? '-'}</td></tr>');
+
       }
     } catch (e) {
       buffer

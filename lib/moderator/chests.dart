@@ -148,93 +148,84 @@ class ChestsPageModerator extends StatelessWidget {
   }
 
   Future<void> _addChest(BuildContext context) async {
-    final nameController = TextEditingController();
-    final balanceController = TextEditingController();
-    final shareController = TextEditingController();
+  final nameController = TextEditingController();
+  final balanceController = TextEditingController();
 
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('إضافة صندوق جديد'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'اسم الصندوق'),
-                ),
-                TextField(
-                  controller: balanceController,
-                  decoration: const InputDecoration(labelText: 'الرصيد'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: shareController,
-                  decoration: const InputDecoration(labelText: 'id'),
-                  keyboardType: TextInputType.number,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إضافة صندوق جديد'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'اسم الصندوق'),
               ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameController.text.isNotEmpty &&
-                      balanceController.text.isNotEmpty &&
-                      shareController.text.isNotEmpty) {
-                    try {
-                      // Fetch the last chest to determine the next ID
-                      final querySnapshot = await FirebaseFirestore.instance
-                          .collection('chests')
-                          .orderBy('id', descending: true)
-                          .limit(1)
-                          .get();
-
-                      int nextId = 1; // Default ID if no chests exist
-                      if (querySnapshot.docs.isNotEmpty) {
-                        final lastChest = querySnapshot.docs.first.data();
-                        nextId = (lastChest['id'] ?? 0) + 1;
-                      }
-
-                      await FirebaseFirestore.instance
-                          .collection('chests')
-                          .add({
-                        'name': nameController.text,
-                        'balance': int.parse(balanceController.text),
-                        'share': int.parse(shareController.text),
-                        'created_at': DateTime.now().toIso8601String(),
-                        'updated_at': DateTime.now().toIso8601String(),
-                        'id': nextId,
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم إضافة الصندوق بنجاح')),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('حدث خطأ: $e')),
-                      );
-                    }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('يرجى ملء جميع الحقول')),
-                    );
-                  }
-                },
-                child: const Text('إضافة'),
+              TextField(
+                controller: balanceController,
+                decoration: const InputDecoration(labelText: 'الرصيد'),
+                keyboardType: TextInputType.number,
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty &&
+                    balanceController.text.isNotEmpty) {
+                  try {
+                    // Fetch the last chest to determine the next ID
+                    final querySnapshot = await FirebaseFirestore.instance
+                        .collection('chests')
+                        .orderBy('id', descending: true)
+                        .limit(1)
+                        .get();
+
+                    int nextId = 1; // Default ID if no chests exist
+                    if (querySnapshot.docs.isNotEmpty) {
+                      final lastChest = querySnapshot.docs.first.data();
+                      nextId = (lastChest['id'] ?? 0) + 1;
+                    }
+
+                    await FirebaseFirestore.instance.collection('chests').add({
+                      'name': nameController.text,
+                      'balance': int.parse(balanceController.text),
+                      'created_at': DateTime.now().toIso8601String(),
+                      'updated_at': DateTime.now().toIso8601String(),
+                      'id': nextId, // Assign the auto-generated ID
+                    });
+
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم إضافة الصندوق بنجاح')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('حدث خطأ: $e')),
+                    );
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('يرجى ملء جميع الحقول')),
+                  );
+                }
+              },
+              child: const Text('إضافة'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
 
   Future<void> _editChest(
