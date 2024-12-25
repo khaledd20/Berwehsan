@@ -46,7 +46,7 @@ class LoginScreenWeb extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const AdminChestsPage()),
             );
-          } else if (role == 2) {
+          } else if (role == 2 ) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('مرحبًا بك، المشرف $fullName!')),
             );
@@ -54,7 +54,7 @@ class LoginScreenWeb extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const ChestsPageModerator()),
             );
-          } else if (role == 1) {
+          } else if (role == 1 || role == 4 || role == 5 ) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('مرحبًا بك، المستخدم $fullName!')),
             );

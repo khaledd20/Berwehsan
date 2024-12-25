@@ -21,12 +21,9 @@ class _UserControlPageState extends State<UserControlPage> {
 
   final List<Map<String, dynamic>> roles = [
     {'id': 5, 'name': 'محاسب'},
-    {'id': 4, 'name': 'سكرتير'},
-    {'id': 3, 'name': 'مدير'},      
-    {'id': 2, 'name': 'مشرف'},
+    {'id': 4, 'name': 'سكرتير'},    
     {'id': 1, 'name': 'مستخدم'},
   ];
-
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -123,26 +120,32 @@ class _UserControlPageState extends State<UserControlPage> {
 
   // Build Role Dropdown
   Widget _buildRoleDropdown() {
-    return DropdownButtonFormField<int>(
-      value: selectedRoleId,
-      items: roles.map((role) {
-        return DropdownMenuItem<int>(
-          value: role['id'],
-          child: Text(role['name']),
-        );
-      }).toList(),
-      decoration: const InputDecoration(
-        labelText: 'الدور',
-        border: OutlineInputBorder(),
-      ),
-      onChanged: (value) {
-        setState(() {
-          selectedRoleId = value;
-        });
-      },
-      validator: (value) => value == null ? 'الرجاء اختيار الدور' : null,
-    );
+  if (!roles.any((role) => role['id'] == selectedRoleId)) {
+    // Reset selectedRoleId if it's not in the current list of roles
+    selectedRoleId = null;
   }
+
+  return DropdownButtonFormField<int>(
+    value: selectedRoleId,
+    items: roles.map((role) {
+      return DropdownMenuItem<int>(
+        value: role['id'],
+        child: Text(role['name']),
+      );
+    }).toList(),
+    decoration: const InputDecoration(
+      labelText: 'الدور',
+      border: OutlineInputBorder(),
+    ),
+    onChanged: (value) {
+      setState(() {
+        selectedRoleId = value;
+      });
+    },
+    validator: (value) => value == null ? 'الرجاء اختيار الدور' : null,
+  );
+}
+
 
   // Add User to Firestore
   Future<void> _addUser() async {
@@ -213,76 +216,96 @@ class _UserControlPageState extends State<UserControlPage> {
 
   // Build User List
   Widget _buildUserList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('admins').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance.collection('admins').snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text(
-              'لا يوجد مستخدمون',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(
+          child: Text(
+            'لا يوجد مستخدمون',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        );
+      }
+
+      // Filter users with valid roles
+      final users = snapshot.data!.docs.where((doc) {
+        final user = doc.data() as Map<String, dynamic>;
+        return roles.any((role) => role['id'] == user['Role']);
+      }).toList();
+
+      if (users.isEmpty) {
+        return const Center(
+          child: Text(
+            'لا يوجد مستخدمون بالأدوار المحددة',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        );
+      }
+
+      return ListView.builder(
+        itemCount: users.length,
+        itemBuilder: (context, index) {
+          final user = users[index].data() as Map<String, dynamic>;
+          final userId = users[index].id;
+
+          return Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              title: Text(user['FullName'] ?? 'غير معروف'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user['email'] ?? 'بريد غير معروف'),
+                  Text(
+                    'الدور: ${roles.firstWhere(
+                      (role) => role['id'] == user['Role'],
+                      orElse: () => {'name': 'غير معروف'}, // Fallback for missing roles
+                    )['name']}',
+                  ),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Edit Button
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () {
+                      setState(() {
+                        isEdit = true;
+                        editingUserId = userId;
+                        _fullNameController.text = user['FullName'] ?? '';
+                        _emailController.text = user['email'] ?? '';
+                        _passwordController.text = user['Password'] ?? '';
+                        selectedRoleId = roles.any((role) => role['id'] == user['Role'])
+                            ? user['Role']
+                            : null; // Reset if role is invalid
+                      });
+                    },
+                  ),
+                  // Delete Button
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      _deleteUser(userId);
+                    },
+                  ),
+                ],
+              ),
             ),
           );
-        }
+        },
+      );
+    },
+  );
+}
 
-        final users = snapshot.data!.docs;
-
-        return ListView.builder(
-          itemCount: users.length,
-          itemBuilder: (context, index) {
-            final user = users[index].data() as Map<String, dynamic>;
-            final userId = users[index].id;
-
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                title: Text(user['FullName'] ?? 'غير معروف'),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user['email'] ?? 'بريد غير معروف'),
-                    Text(
-                        'الدور: ${roles.firstWhere((role) => role['id'] == user['Role'], orElse: () => {'name': 'غير معروف'})['name']}'),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Edit Button
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () {
-                        setState(() {
-                          isEdit = true;
-                          editingUserId = userId;
-                          _fullNameController.text = user['FullName'] ?? '';
-                          _emailController.text = user['email'] ?? '';
-                          _passwordController.text = user['Password'] ?? '';
-                          selectedRoleId = user['Role'];
-                        });
-                      },
-                    ),
-                    // Delete Button
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () {
-                        _deleteUser(userId);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   // Clear Form
   void _clearForm() {

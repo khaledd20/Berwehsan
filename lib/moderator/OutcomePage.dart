@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' as intl;
 import 'dart:html' as html;
+import 'package:rxdart/rxdart.dart';
 
 
 class OutcomePage extends StatefulWidget {
@@ -19,14 +20,14 @@ class _OutcomePageState extends State<OutcomePage> {
   DateTime? _endDate;
 
 
-// Function to add a new receipt
-  void _addReceipt() {
+void _addReceipt() {
   final receiptController = TextEditingController();
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
   final amountController = TextEditingController();
   final noteController = TextEditingController();
   String selectedCategory = 'السلفه';
+  DateTime? manualDate;
 
   showDialog(
     context: context,
@@ -37,8 +38,10 @@ class _OutcomePageState extends State<OutcomePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-                value: selectedCategory.isNotEmpty ? selectedCategory : 'السلفه',
-                items: ['القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
+              value: selectedCategory,
+              items: [
+                'بنك', 'القبض', 'السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان'
+              ]
                   .map((category) => DropdownMenuItem(
                         value: category,
                         child: Text(category),
@@ -69,6 +72,23 @@ class _OutcomePageState extends State<OutcomePage> {
               controller: noteController,
               decoration: const InputDecoration(labelText: "الملاحظات"),
             ),
+            ElevatedButton(
+              onPressed: () async {
+                final pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (pickedDate != null) {
+                  manualDate = pickedDate;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('تم اختيار التاريخ: ${intl.DateFormat.yMMMd().format(manualDate!)}')),
+                  );
+                }
+              },
+              child: const Text("اختيار تاريخ يدوي"),
+            ),
           ],
         ),
       ),
@@ -93,21 +113,50 @@ class _OutcomePageState extends State<OutcomePage> {
               return;
             }
 
-            // Add new document to the finance_log collection
-            await FirebaseFirestore.instance.collection('finance_log').add({
-              "receipt_number": receiptNumber,
-              "name": name,
-              "phone": phone,
-              "amount": amount,
-              "category": selectedCategory,
-              "date_time": now.toIso8601String(),
-              "type": "out",
-              "notes": notes,
-            });
-            // Update or create a document for the selected category in the 'finance' collection
+            try {
+              // Check if the receipt number already exists
+              final existingReceipt = await FirebaseFirestore.instance
+                  .collection('finance_log')
+                  .where('receipt_number', isEqualTo: receiptNumber)
+                  .get();
+
+              if (existingReceipt.docs.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("رقم الإيصال موجود بالفعل. يرجى إدخال رقم آخر.")),
+                );
+                return;
+              }
+
+              // Fetch the next available id
+              final snapshot = await FirebaseFirestore.instance
+                  .collection('finance_log')
+                  .orderBy('id', descending: true)
+                  .limit(1)
+                  .get();
+
+              int nextId = 1;
+              if (snapshot.docs.isNotEmpty) {
+                nextId = (snapshot.docs.first.data()['id'] ?? 0) + 1;
+              }
+
+              // Add new document to the finance_log collection
+              await FirebaseFirestore.instance.collection('finance_log').add({
+                "id": nextId,
+                "receipt_number": receiptNumber,
+                "name": name,
+                "phone": phone,
+                "amount": amount,
+                "category": selectedCategory,
+                "date_time": now.toIso8601String(),
+                "manual_date": manualDate?.toIso8601String() ?? now.toIso8601String(),
+                "type": "out",
+                "notes": notes,
+              });
+
+              // Update or create a document for the selected category in the 'finance' collection
               final categoryDocRef = FirebaseFirestore.instance
                   .collection('finance')
-                  .doc(selectedCategory); // Use category name as document ID
+                  .doc(selectedCategory);
 
               final categoryDoc = await categoryDocRef.get();
 
@@ -121,21 +170,26 @@ class _OutcomePageState extends State<OutcomePage> {
               } else {
                 // Create a new document for the category
                 await categoryDocRef.set({
-                "id": categoryDocRef.id, // Add ID to the document
-                "name": selectedCategory,
-                "amount": amount,
-                "updated_at": DateTime.now().toIso8601String(),
-              });
-
+                  "id": categoryDocRef.id,
+                  "name": selectedCategory,
+                  "amount": amount,
+                  "updated_at": DateTime.now().toIso8601String(),
+                });
               }
 
-            // Update total amount in the 'الاجمالي' document in finance collection
-            await _updateTotalAmount();
+              // Update total amount in the 'الاجمالي' document in finance collection
+              await _updateTotalAmount();
 
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("تمت إضافة الإيصال بنجاح!")),
-            );
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("تمت إضافة الإيصال بنجاح!")),
+              );
+            } catch (e) {
+              print("Error adding receipt: $e");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("حدث خطأ أثناء الإضافة: $e")),
+              );
+            }
           },
           child: const Text("إضافة"),
         ),
@@ -148,26 +202,21 @@ class _OutcomePageState extends State<OutcomePage> {
 
 
 
-  Future<void> _printFilteredResults(List<QueryDocumentSnapshot> logs) async {
-  if (logs.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("لا توجد نتائج للطباعة.")),
-    );
-    return;
-  }
 
+ Future<void> _printFilteredResults(List<QueryDocumentSnapshot> logs) async {
   try {
-    int totalAmount = 0;
+    // Initialize totals
+    int totalAmount = 0; 
     int balance = 0;
 
-    // Fetch balance for display from 'الاجمالي'
+    // Fetch the balance from the 'finance/الاجمالي' document
     final financeDoc = await FirebaseFirestore.instance
         .collection('finance')
         .doc('الاجمالي')
         .get();
 
     if (financeDoc.exists) {
-      balance = financeDoc.data()?['balance'] ?? 0;
+      balance = (financeDoc.data()?['balance'] ?? 0) as int; 
     }
 
     final buffer = StringBuffer();
@@ -175,56 +224,63 @@ class _OutcomePageState extends State<OutcomePage> {
     buffer.writeln('<head>');
     buffer.writeln('<meta charset="UTF-8">');
     buffer.writeln('<style>');
-    buffer.writeln(
-        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
-    buffer.writeln(
-        'th, td { border: 1px solid black; padding: 8px; text-align: center; }');
+    buffer.writeln('table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
+    buffer.writeln('th, td { border: 1px solid black; padding: 8px; text-align: center; }');
     buffer.writeln('th { background-color: #f2f2f2; font-size: 18px; }');
     buffer.writeln('td { font-size: 16px; }');
     buffer.writeln('</style>');
     buffer.writeln('</head>');
-    buffer.writeln(
-        '<body style="direction: rtl; font-family: Arial, sans-serif;">');
-    buffer.writeln('<h1 style="text-align: center;">سجل الصادر</h1>');
+    buffer.writeln('<body style="direction: rtl; font-family: Arial, sans-serif;">');
+    buffer.writeln('<h1 style="text-align: center;">إيصال الصادر</h1>');
     buffer.writeln('<table>');
-    buffer.writeln(
-        '<tr><th>الوصف</th><th>المبلغ</th><th>التاريخ</th></tr>');
+    buffer.writeln('<tr>'
+        '<th>رقم الإيصال</th>'
+        '<th>اسم المصدر</th>'
+        '<th>رقم الهاتف</th>'
+        '<th>المبلغ</th>'
+        '<th>الفئة</th>'
+        '<th>التاريخ</th>'
+        '<th>الملاحظات</th>'
+        '</tr>');
 
+    // Generate table rows
     for (final log in logs) {
       final data = log.data() as Map<String, dynamic>;
 
-      final amount = (data['amount'] ?? 0) is num
-          ? (data['amount'] as num).toInt()
-          : 0;
-      final category = data['category'] ?? '---';
-      final receiptNumber = data['receipt_number'] ?? '---';
-      final dateTime = data['date_time'] ?? '';
-
+      // Safely cast 'amount' to int
+      final amount = (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
       totalAmount += amount;
 
       buffer.writeln('<tr>'
-          '<td>$category - رقم الإيصال: $receiptNumber</td>'
+          '<td>${data['receipt_number'] ?? 'غير معروف'}</td>'
+          '<td>${data['name'] ?? 'غير معروف'}</td>'
+          '<td>${data['phone'] ?? 'غير معروف'}</td>'
           '<td>$amount</td>'
-          '<td>${formatDateTime(dateTime)}</td>'
+          '<td>${data['category'] ?? 'غير معروف'}</td>'
+          '<td>${formatDateTime(data['manual_date'])}</td>'
+          '<td>${data['notes'] ?? ''}</td>'
           '</tr>');
     }
 
-    // Append total row
+    // Append a row for the total amount
     buffer.writeln('<tr>'
-        '<td colspan="2" style="font-weight: bold; text-align: center;">الإجمالي</td>'
+        '<td colspan="3" style="font-weight: bold; text-align: center;">الإجمالي</td>'
         '<td style="font-weight: bold;">$totalAmount</td>'
+        '<td colspan="3"></td>'
         '</tr>');
 
-    // Append balance row
+    // Append a row for the balance
     buffer.writeln('<tr>'
-        '<td colspan="2" style="font-weight: bold; text-align: center;">الرصيد</td>'
+        '<td colspan="3" style="font-weight: bold; text-align: center;">الرصيد</td>'
         '<td style="font-weight: bold;">$balance</td>'
+        '<td colspan="3"></td>'
         '</tr>');
 
     buffer.writeln('</table>');
     buffer.writeln('</body>');
     buffer.writeln('</html>');
 
+    // Create and open the print file
     final blob = html.Blob([buffer.toString()], 'text/html');
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.window.open(url, '_blank');
@@ -234,7 +290,7 @@ class _OutcomePageState extends State<OutcomePage> {
       const SnackBar(content: Text('تم إنشاء جدول الطباعة بنجاح')),
     );
   } catch (error) {
-    print("Error generating print results: $error");
+    print('Error generating print results: $error');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('حدث خطأ أثناء الطباعة: $error')),
     );
@@ -267,16 +323,15 @@ class _OutcomePageState extends State<OutcomePage> {
   // Table with centered content
   buffer.writeln('<table>');
   buffer.writeln('<tr><th>الوصف</th><th>التفاصيل</th></tr>');
-
-
-    buffer.writeln('<tr><td>رقم الإيصال</td><td>${data['receipt_number'] ?? '---'}</td></tr>');
-    buffer.writeln('<tr><td>اسم المصدر</td><td>${data['name'] ?? '---'}</td></tr>');
-    buffer.writeln('<tr><td>المبلغ</td><td>${data['amount'] ?? 0}</td></tr>');
-    buffer.writeln('<tr><td>الفئة</td><td>${data['category'] ?? '---'}</td></tr>');
-    buffer.writeln('<tr><td>التاريخ</td><td>${formatDateTime(data['date_time'])}</td></tr>');
-  
-
+  buffer.writeln('<tr><td>رقم الإيصال</td><td>${data['receipt_number']}</td></tr>');
+  buffer.writeln('<tr><td>اسم المصدر</td><td>${data['name']}</td></tr>');
+  buffer.writeln('<tr><td>رقم الهاتف</td><td>${data['phone']}</td></tr>');
+  buffer.writeln('<tr><td>المبلغ</td><td>${data['amount']}</td></tr>');
+  buffer.writeln('<tr><td>الفئة</td><td>${data['category']}</td></tr>');
+  buffer.writeln('<tr><td>التاريخ</td><td>${formatDateTime(data['manual_date'])}</td></tr>');
+  buffer.writeln('<tr><td>الملاحظات</td><td>${data['notes'] ?? ''}</td></tr>');
   buffer.writeln('</table>');
+
   buffer.writeln('</body>');
   buffer.writeln('</html>');
 
@@ -344,6 +399,13 @@ Future<void> _updateTotalAmount() async {
 
 
 
+
+
+
+
+
+
+
 // Function to edit a document
   void _editReceipt(String docId, Map<String, dynamic> data) {
   final receiptController = TextEditingController(text: data['receipt_number']);
@@ -362,7 +424,7 @@ Future<void> _updateTotalAmount() async {
           children: [
             DropdownButtonFormField<String>(
               value: selectedCategory,
-              items: ['القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
+              items: ['بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
                   .map((category) => DropdownMenuItem(
                         value: category,
                         child: Text(category),
@@ -510,21 +572,26 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
                   final data = log.data() as Map<String, dynamic>;
 
                   // Filter by name, receipt number, or case_id
-                  final matchesNameOrReceipt = _nameOrReceiptFilter.isEmpty ||
-                      (data['name']?.toString()?.contains(_nameOrReceiptFilter) ?? false) ||
-                      (data['receipt_number']?.toString()?.contains(_nameOrReceiptFilter) ?? false);
+                 final matchesNameOrReceipt = _nameOrReceiptFilter.isEmpty ||
+                      data['name'].toString().contains(_nameOrReceiptFilter) ||
+                      data['receipt_number']
+                          .toString()
+                          .contains(_nameOrReceiptFilter);
                   // Filter by category
                   final matchesCategory = _selectedCategory == 'الكل' ||
                       data['category'] == _selectedCategory;
 
                   // Filter by date range
-                  final dateField = data['date_time'] ?? '';
                   final matchesDateRange = _startDate == null ||
                       _endDate == null ||
-                      (DateTime.parse(dateField).isAtSameMomentAs(_startDate!) ||
-                          DateTime.parse(dateField).isAfter(_startDate!)) &&
-                          (DateTime.parse(dateField).isAtSameMomentAs(_endDate!) ||
-                              DateTime.parse(dateField).isBefore(_endDate!.add(Duration(days: 1))));
+                      (DateTime.parse(data['manual_date'])
+                              .isAtSameMomentAs(_startDate!) ||
+                          DateTime.parse(data['manual_date'])
+                              .isAfter(_startDate!)) &&
+                          (DateTime.parse(data['manual_date'])
+                                  .isAtSameMomentAs(_endDate!) ||
+                              DateTime.parse(data['manual_date'])
+                                  .isBefore(_endDate!.add(Duration(days: 1))));
 
                   return matchesNameOrReceipt && matchesCategory && matchesDateRange;
                 }).toList();
@@ -562,7 +629,7 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedCategory,
-                         items: ['الكل','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
+                         items: ['الكل','بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
                           .map((category) => DropdownMenuItem(
                                 value: category,
                                 child: Text(category),
@@ -594,33 +661,45 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
               ),
             ),
             Expanded(
-              child: StreamBuilder<List<QueryDocumentSnapshot>>(
-              stream: _getCombinedLogsStream(), // Use the combined stream
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                  .collection('finance_log')
+                  .where('type', isEqualTo: 'out')
+                  .orderBy('id')
+                  .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final logs = snapshot.data?.docs ?? [];
+                  final filteredLogs = logs.where((log) {
+                    final data = log.data() as Map<String, dynamic>;
+                    final matchesNameOrReceipt = _nameOrReceiptFilter.isEmpty ||
+                        data['name']
+                            .toString()
+                            .contains(_nameOrReceiptFilter) ||
+                        data['receipt_number']
+                            .toString()
+                            .contains(_nameOrReceiptFilter);
 
-                if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                }
+                    final matchesCategory = _selectedCategory == 'الكل' ||
+                        data['category'] == _selectedCategory;
 
-                final allLogs = snapshot.data ?? [];
+                    final matchesDateRange = _startDate == null ||
+                        _endDate == null ||
+                        (DateTime.parse(data['manual_date'])
+                                .isAtSameMomentAs(_startDate!) ||
+                            DateTime.parse(data['manual_date'])
+                                .isAfter(_startDate!)) &&
+                            (DateTime.parse(data['manual_date'])
+                                    .isAtSameMomentAs(_endDate!) ||
+                                DateTime.parse(data['manual_date'])
+                                    .isBefore(_endDate!
+                                        .add(const Duration(days: 1))));
 
-                // Filter logs based on selected category, name, or receipt number
-                final filteredLogs = allLogs.where((log) {
-                final data = log.data() as Map<String, dynamic>;
-
-                final amount = data['amount'] ?? 0;
-                final category = data['category'] ?? '';
-                final matchesNameOrReceipt = _nameOrReceiptFilter.isEmpty ||
-                    (data['name']?.toString()?.contains(_nameOrReceiptFilter) ?? false) ||
-                    (data['receipt_number']?.toString()?.contains(_nameOrReceiptFilter) ?? false) ||
-                    (data['case_id']?.toString()?.contains(_nameOrReceiptFilter) ?? false);
-
-                final matchesCategory = _selectedCategory == 'الكل' || data['category'] == _selectedCategory;
-
-                return matchesNameOrReceipt && matchesCategory;
+                return matchesNameOrReceipt &&
+                        matchesCategory &&
+                        matchesDateRange;
               }).toList();
 
 
@@ -632,7 +711,7 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
 
                     final amount = log['amount'] ?? 0;
                     final category = log['category'] ?? '---';
-                    final dateTime = log['date_time'] ?? '';
+                    final dateTime = log['manual_date'] ?? '';
 
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -641,10 +720,12 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("الفئة: $category"),
+                            Text("اسم المصدر: ${log['name']}"),
+                            Text("رقم الهاتف: ${log['phone']}"),
                             Text("المبلغ: $amount"),
+                            Text("الفئة: $category"),
                             Text("التاريخ: ${formatDateTime(dateTime)}"),
-                            if (log.containsKey('notes')) Text("ملاحظات: ${log['notes']}"),
+                            Text("ملاحظات: ${log['notes'] ?? ''}"),
                           ],
                         ),
                         trailing: Row(

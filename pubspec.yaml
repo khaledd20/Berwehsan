@@ -44,6 +44,7 @@ dependencies:
   flutter_easyloading: ^3.0.5
   intl: ^0.20.1
   rxdart: ^0.28.0
+  dropdown_search: ^6.0.1
 
 
 flutter_localizations:

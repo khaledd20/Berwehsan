@@ -17,6 +17,7 @@ class _EditCaseState extends State<EditCase> {
   final TextEditingController idController =
       TextEditingController(); // Add this
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController motherNameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController socialStatusController = TextEditingController();
   final TextEditingController incomeController = TextEditingController();
@@ -58,6 +59,7 @@ class _EditCaseState extends State<EditCase> {
         setState(() {
           idController.text = data['id'].toString(); // Populate id field
           nameController.text = data['name'];
+          motherNameController.text = data['mother_name'] ?? ''; // Add mother's name
           locationController.text = data['location'];
           socialStatusController.text = data['social_status'];
           incomeController.text = data['in_come'].toString();
@@ -188,6 +190,7 @@ class _EditCaseState extends State<EditCase> {
       final formData = {
         'id': newId, // Update the ID
         'name': nameController.text,
+        'mother_name': motherNameController.text, // Add mother's name
         'location': locationController.text,
         'social_status': socialStatusController.text,
         'in_come': int.tryParse(incomeController.text) ?? 0,
@@ -238,6 +241,7 @@ class _EditCaseState extends State<EditCase> {
                 buildTextField('رقم الحالة', 'أدخل رقم الحالة', idController,
                     inputType: TextInputType.number),
                 buildTextField('الاسم', 'أدخل الاسم', nameController),
+                buildTextField('اسم الأم', 'أدخل اسم الأم', motherNameController),
                 buildTextField('العنوان', 'أدخل العنوان', locationController),
                 buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية',
                     socialStatusController),

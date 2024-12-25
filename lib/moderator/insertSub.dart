@@ -13,8 +13,8 @@ class InsertSub extends StatefulWidget {
 
 class _InsertSubState extends State<InsertSub> {
   final _formKey = GlobalKey<FormState>();
+  bool isLoading = false; // Flag to track submission status
 
-  // Form fields
   final Map<String, dynamic> formData = {
     'name': '',
     'location': '',
@@ -27,7 +27,6 @@ class _InsertSubState extends State<InsertSub> {
   void initState() {
     super.initState();
     if (widget.existingSub != null) {
-      // Pre-fill form data for editing
       formData['name'] = widget.existingSub!['name'] ?? '';
       formData['location'] = widget.existingSub!['location'] ?? '';
       formData['number'] = widget.existingSub!['number'] ?? '';
@@ -37,49 +36,79 @@ class _InsertSubState extends State<InsertSub> {
   }
 
   Future<void> submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    _formKey.currentState!.save();
+  // Prevent duplicate submissions
+  if (isLoading) return;
 
-    try {
-      final subsCollection = FirebaseFirestore.instance.collection('subs');
+  setState(() {
+    isLoading = true; // Start loading
+  });
 
-      // Prepare the data to be inserted
-      Map<String, dynamic> subData = {
-        'Active': formData['Active'],
-        'case_count': 0,
-        'created_at': DateTime.now().toString(),
-        'id': DateTime.now().millisecondsSinceEpoch, // Use timestamp as id
-        'location': formData['location'],
-        'name': formData['name'],
-        'number': formData['number'],
-        'unite': int.tryParse(formData['unite'].toString()) ?? 0,
-        'pied_times': 0,
-        'updated_at': DateTime.now().toString(),
-      };
+  _formKey.currentState!.save();
 
-      if (widget.existingSub == null) {
-        // Insert new document
-        await subsCollection.add(subData);
-      } else {
-        // Update existing document
-        await subsCollection.doc(widget.existingSub!['docId']).update(subData);
+  try {
+    final subsCollection = FirebaseFirestore.instance.collection('subs');
+
+    int nextId = 1;
+
+    if (widget.existingSub == null) {
+      QuerySnapshot querySnapshot = await subsCollection
+          .orderBy('id', descending: true)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        nextId = querySnapshot.docs.first['id'] + 1;
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الكفالة بنجاح')),
-      );
-      widget.onSubmit(); // Call the callback to refresh the page
-      Navigator.pop(context); // Close the form page
-    } catch (error) {
-      print('Error: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $error')),
-      );
+    } else {
+      nextId = widget.existingSub!['id'];
     }
-  }
 
-  // Function to build text fields dynamically
+    Map<String, dynamic> subData = {
+      'Active': formData['Active'],
+      'case_count': 0,
+      'created_at': widget.existingSub == null
+          ? DateTime.now().toString()
+          : widget.existingSub!['created_at'],
+      'id': nextId,
+      'location': formData['location'],
+      'name': formData['name'],
+      'number': formData['number'],
+      'unite': int.tryParse(formData['unite'].toString()) ?? 0,
+      'pied_times': widget.existingSub == null
+          ? 0
+          : widget.existingSub!['pied_times'],
+      'updated_at': DateTime.now().toString(),
+    };
+
+    if (widget.existingSub == null) {
+      await subsCollection.add(subData);
+    } else {
+      await subsCollection.doc(widget.existingSub!['docId']).update(subData);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم حفظ الكفالة بنجاح')),
+    );
+
+    widget.onSubmit(); // Call the callback to refresh the page
+
+    // Navigate back after successful submission
+    Navigator.pop(context);
+  } catch (error) {
+    print('Error: $error');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('خطأ: $error')),
+    );
+  } finally {
+    setState(() {
+      isLoading = false; // Stop loading
+    });
+  }
+}
+
+
   Widget buildTextField({
     required String label,
     required String key,
@@ -104,7 +133,7 @@ class _InsertSubState extends State<InsertSub> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // RTL layout
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.existingSub == null
@@ -131,8 +160,12 @@ class _InsertSubState extends State<InsertSub> {
                       inputType: TextInputType.number),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: submitForm,
-                    child: Text(widget.existingSub == null ? 'إضافة' : 'تعديل'),
+                    onPressed: isLoading ? null : submitForm, // Disable if loading
+                    child: isLoading
+                        ? const CircularProgressIndicator(
+                            color: Colors.white,
+                          )
+                        : Text(widget.existingSub == null ? 'إضافة' : 'تعديل'),
                   ),
                 ],
               ),

@@ -8,9 +8,11 @@ class InsertCase extends StatefulWidget {
 
 class _InsertCaseState extends State<InsertCase> {
   final _formKey = GlobalKey<FormState>();
+    bool isLoading = false;
 
   // Controllers for text fields
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController motherNameController = TextEditingController(); // New controller for mother's name
   final TextEditingController locationController = TextEditingController();
   final TextEditingController socialStatusController = TextEditingController();
   final TextEditingController incomeController = TextEditingController();
@@ -22,6 +24,9 @@ class _InsertCaseState extends State<InsertCase> {
   final TextEditingController ageController = TextEditingController();
   final TextEditingController gradeIdController = TextEditingController();
   final TextEditingController balanceController = TextEditingController(); // New controller for `balance`
+  final TextEditingController chestSearchController = TextEditingController(); // Search controller for chests
+  final TextEditingController subSearchController = TextEditingController();   // Search controller for subs
+  
 
   String? selectedAreaId;
   List<Map<String, dynamic>> areas = [];
@@ -29,6 +34,9 @@ class _InsertCaseState extends State<InsertCase> {
   List<Map<String, dynamic>> subs = [];
   List<int> selectedChestIds = [];
   List<int> selectedSubIds = [];
+  List<Map<String, dynamic>> filteredChests = []; // Filtered list for chests
+  List<Map<String, dynamic>> filteredSubs = [];   // Filtered list for subs
+
 
   @override
   void initState() {
@@ -55,44 +63,70 @@ class _InsertCaseState extends State<InsertCase> {
   }
 
   Future<void> fetchChests() async {
-    try {
-      final chestsSnapshot = await FirebaseFirestore.instance.collection('chests').get();
-      setState(() {
-        chests = chestsSnapshot.docs.map((doc) {
-          return {
-            'id': doc['id'], // ID is expected to be a number
-            'name': doc['name'].toString(),
-          };
-        }).toList();
-      });
-    } catch (error) {
-      print('Error fetching chests: $error');
-    }
+  try {
+    final chestsSnapshot = await FirebaseFirestore.instance.collection('chests').get();
+    setState(() {
+      chests = chestsSnapshot.docs.map((doc) {
+        return {
+          'id': doc['id'],
+          'name': doc['name'].toString(),
+        };
+      }).toList();
+      filteredChests = List.from(chests); // Initialize filtered list
+    });
+  } catch (error) {
+    print('Error fetching chests: $error');
   }
+}
+
 
   Future<void> fetchSubs() async {
-    try {
-      final subsSnapshot = await FirebaseFirestore.instance.collection('subs').get();
-      setState(() {
-        subs = subsSnapshot.docs.map((doc) {
-          return {
-            'id': doc['id'], // ID is expected to be a number
-            'name': doc['name'].toString(),
-          };
-        }).toList();
-      });
-    } catch (error) {
-      print('Error fetching subs: $error');
-    }
+  try {
+    final subsSnapshot = await FirebaseFirestore.instance.collection('subs').get();
+    setState(() {
+      subs = subsSnapshot.docs.map((doc) {
+        return {
+          'id': doc['id'],
+          'name': doc['name'].toString(),
+        };
+      }).toList();
+      filteredSubs = List.from(subs); // Initialize filtered list
+    });
+  } catch (error) {
+    print('Error fetching subs: $error');
   }
+}
+
+void filterChests(String query) {
+  setState(() {
+    filteredChests = chests
+        .where((chest) => chest['name'].toLowerCase().contains(query.toLowerCase()))
+        .toList();
+  });
+}
+
+void filterSubs(String query) {
+  setState(() {
+    filteredSubs = subs
+        .where((sub) => sub['name'].toLowerCase().contains(query.toLowerCase()))
+        .toList();
+  });
+}
+
+
+
 
   Future<void> submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() {
+    isLoading = true; // Start loading
+    });
 
     try {
       // Collect all field values
       final formData = {
         'name': nameController.text,
+        'mother_name': motherNameController.text, // Add mother's name to Firestore
         'location': locationController.text,
         'social_status': socialStatusController.text,
         'in_come': int.tryParse(incomeController.text) ?? 0, // Convert to integer
@@ -146,6 +180,11 @@ class _InsertCaseState extends State<InsertCase> {
         SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
       );
     }
+    finally {
+    setState(() {
+      isLoading = false; // Stop loading
+    });
+    }
   }
 
   @override
@@ -163,7 +202,8 @@ class _InsertCaseState extends State<InsertCase> {
             key: _formKey,
             child: ListView(
               children: [
-                buildTextField('الاسم', 'أدخل الاسم', nameController),
+                buildTextField('الاسم', 'أدخل الاسم', nameController),                
+                buildTextField('اسم الأم', 'أدخل اسم الأم', motherNameController), // New mother's name field
                 buildTextField('العنوان', 'أدخل العنوان', locationController),
                 buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية', socialStatusController),
                 buildTextField('الدخل', 'أدخل الدخل', incomeController, inputType: TextInputType.number),
@@ -175,8 +215,20 @@ class _InsertCaseState extends State<InsertCase> {
                 buildTextField('العمر', 'أدخل العمر', ageController, inputType: TextInputType.number),
                 buildTextField('القبض', 'أدخل القبض', balanceController, inputType: TextInputType.number), // New balance field
                 buildAreaDropdown(),
-                buildMultiSelectDropdown('اختر الصناديق', chests, selectedChestIds),
-                buildMultiSelectDropdown('اختر المشتركين', subs, selectedSubIds),
+                buildMultiSelectDropdownWithSearch(
+                  'اختر الصناديق',
+                  chestSearchController,
+                  filteredChests,
+                  selectedChestIds,
+                  filterChests,
+                ),
+                buildMultiSelectDropdownWithSearch(
+                  'اختر المشتركين',
+                  subSearchController,
+                  filteredSubs,
+                  selectedSubIds,
+                  filterSubs,
+                ),
                 buildTextField('المرحلة الدراسية', 'أدخل المرحلة الدراسية', gradeIdController),
                 const SizedBox(height: 20),
                 Row(
@@ -188,9 +240,18 @@ class _InsertCaseState extends State<InsertCase> {
                       child: const Text('إلغاء'),
                     ),
                     ElevatedButton(
-                      onPressed: submitForm,
+                      onPressed: isLoading ? null : submitForm, // Disable button while loading
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                      child: const Text('حفظ'),
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('حفظ'),
                     ),
                   ],
                 ),
@@ -244,31 +305,51 @@ class _InsertCaseState extends State<InsertCase> {
     );
   }
 
-  Widget buildMultiSelectDropdown(String label, List<Map<String, dynamic>> items, List<int> selectedItems) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Card(
-        child: Column(
-          children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-            ...items.map((item) {
-              return CheckboxListTile(
-                value: selectedItems.contains(item['id']),
-                title: Text(item['name'] ?? ''),
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedItems.add(item['id']);
-                    } else {
-                      selectedItems.remove(item['id']);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ],
-        ),
+  Widget buildMultiSelectDropdownWithSearch(
+  String label,
+  TextEditingController searchController,
+  List<Map<String, dynamic>> items,
+  List<int> selectedItems,
+  Function(String) onSearch,
+) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: Card(
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: searchController,
+              textDirection: TextDirection.rtl,
+              decoration: const InputDecoration(
+                labelText: 'بحث',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.search),
+              ),
+              onChanged: onSearch,
+            ),
+          ),
+          ...items.map((item) {
+            return CheckboxListTile(
+              value: selectedItems.contains(item['id']),
+              title: Text(item['name'] ?? ''),
+              onChanged: (value) {
+                setState(() {
+                  if (value == true) {
+                    selectedItems.add(item['id']);
+                  } else {
+                    selectedItems.remove(item['id']);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }

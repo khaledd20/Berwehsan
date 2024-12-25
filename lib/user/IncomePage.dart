@@ -17,130 +17,329 @@ class _IncomePageState extends State<IncomePage> {
   DateTime? _startDate;
   DateTime? _endDate;
 
-// Function to add a new receipt
-  void _addReceipt() {
+void _addReceipt() async {
   final receiptController = TextEditingController();
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
   final amountController = TextEditingController();
   final noteController = TextEditingController();
+  DateTime? manualDate;
   String selectedCategory = 'الكفالات';
+  String? selectedSubName;
+  String? selectedSubId;
+
+  // Fetch subs from the Firestore database
+  List<Map<String, dynamic>> subs = [];
+  try {
+    final subsSnapshot = await FirebaseFirestore.instance.collection('subs').get();
+    subs = subsSnapshot.docs
+        .map((doc) => {
+              'id': doc.id,
+              'name': doc.data()['name'] as String,
+            })
+        .toList();
+  } catch (e) {
+    print('Error fetching subs: $e');
+  }
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("إضافة إيصال جديد"),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              value: selectedCategory,
-              items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك']
-                  .map((category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      ))
-                  .toList(),
-              onChanged: (value) => selectedCategory = value!,
-              decoration: const InputDecoration(labelText: "الفئة"),
-            ),
-            TextField(
-              controller: receiptController,
-              decoration: const InputDecoration(labelText: "رقم الإيصال"),
-            ),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "اسم المصدر"),
-            ),
-            TextField(
-              controller: phoneController,
-              decoration: const InputDecoration(labelText: "رقم الهاتف"),
-              keyboardType: TextInputType.phone,
-            ),
-            TextField(
-              controller: amountController,
-              decoration: const InputDecoration(labelText: "المبلغ"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(labelText: "الملاحظات"),
-            ),
-          ],
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text("إضافة إيصال جديد"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك']
+                    .map((category) => DropdownMenuItem(
+                          value: category,
+                          child: Text(category),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value!;
+                    selectedSubName = null; // Reset sub-name if category changes
+                  });
+                },
+                decoration: const InputDecoration(labelText: "الفئة"),
+              ),
+              TextField(
+                controller: receiptController,
+                decoration: const InputDecoration(labelText: "رقم الإيصال"),
+              ),
+              if (selectedCategory == 'الكفالات')
+                buildSingleSelectDropdown(
+                  'اختر اسم الكفالة',
+                  subs,
+                  selectedSubId,
+                  (value) {
+                    setState(() {
+                      selectedSubId = value;
+                      selectedSubName = subs
+                          .firstWhere((sub) => sub['id'] == value)['name'];
+                    });
+                  },
+                )
+              else
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: "اسم المصدر"),
+                ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: "رقم الهاتف"),
+                keyboardType: TextInputType.phone,
+              ),
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(labelText: "المبلغ"),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(labelText: "الملاحظات"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (pickedDate != null) {
+                    setState(() {
+                      manualDate = pickedDate;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'تم اختيار التاريخ: ${intl.DateFormat.yMMMd().format(manualDate!)}')),
+                    );
+                  }
+                },
+                child: const Text("اختيار تاريخ يدوي"),
+              ),
+            ],
+          ),
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("إلغاء"),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            final receiptNumber = receiptController.text.trim();
-            final name = nameController.text.trim();
-            final phone = phoneController.text.trim();
-            final amount = int.tryParse(amountController.text.trim());
-            final notes = noteController.text.trim();
-            final now = DateTime.now();
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("إلغاء"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final receiptNumber = receiptController.text.trim();
+              final name = selectedCategory == 'الكفالات'
+                  ? selectedSubName
+                  : nameController.text.trim();
+              final phone = phoneController.text.trim();
+              final amount = int.tryParse(amountController.text.trim());
+              final notes = noteController.text.trim();
+              final now = DateTime.now();
 
-            if (receiptNumber.isEmpty || name.isEmpty || amount == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("يرجى ملء جميع الحقول المطلوبة.")),
-              );
-              return;
-            }
-
-            // Add new document to the finance_log collection
-            await FirebaseFirestore.instance.collection('finance_log').add({
-              "receipt_number": receiptNumber,
-              "name": name,
-              "phone": phone,
-              "amount": amount,
-              "category": selectedCategory,
-              "date_time": now.toIso8601String(),
-              "type": "in",
-              "notes": notes,
-            });
-            // Update or create a document for the selected category in the 'finance' collection
-              final categoryDocRef = FirebaseFirestore.instance
-                  .collection('finance')
-                  .doc(selectedCategory); // Use category name as document ID
-
-              final categoryDoc = await categoryDocRef.get();
-
-              if (categoryDoc.exists) {
-                // Update the existing document by increasing the amount
-                final currentAmount = categoryDoc['amount'] ?? 0;
-                await categoryDocRef.update({
-                  "amount": currentAmount + amount,
-                  "updated_at": DateTime.now().toIso8601String(),
-                });
-              } else {
-                // Create a new document for the category
-                await categoryDocRef.set({
-                "id": categoryDocRef.id, // Add ID to the document
-                "name": selectedCategory,
-                "amount": amount,
-                "updated_at": DateTime.now().toIso8601String(),
-              });
-
+              if (receiptNumber.isEmpty || name == null || amount == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("يرجى ملء جميع الحقول المطلوبة.")),
+                );
+                return;
               }
 
-            // Update total amount in the 'الاجمالي' document in finance collection
-            await _updateTotalAmount();
+              try {
+                // Ensure the receipt number doesn't exist
+                final existingReceipt = await FirebaseFirestore.instance
+                    .collection('finance_log')
+                    .where('receipt_number', isEqualTo: receiptNumber)
+                    .get();
 
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("تمت إضافة الإيصال بنجاح!")),
-            );
-          },
-          child: const Text("إضافة"),
-        ),
-      ],
+                if (existingReceipt.docs.isNotEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("رقم الإيصال موجود بالفعل. يرجى إدخال رقم آخر.")),
+                  );
+                  return;
+                }
+
+                // Fetch next id safely
+                final snapshot = await FirebaseFirestore.instance
+                    .collection('finance_log')
+                    .orderBy('id', descending: true)
+                    .limit(1)
+                    .get();
+
+                int nextId = 1;
+                if (snapshot.docs.isNotEmpty) {
+                  nextId = (snapshot.docs.first.data()['id'] ?? 0) + 1;
+                }
+
+                // Add the new document to finance_log
+                await FirebaseFirestore.instance.collection('finance_log').add({
+                  "id": nextId,
+                  "receipt_number": receiptNumber,
+                  "name": name,
+                  "phone": phone,
+                  "amount": amount,
+                  "category": selectedCategory,
+                  "date_time": now.toIso8601String(),
+                  "manual_date": manualDate?.toIso8601String() ?? now.toIso8601String(),
+                  "type": "in",
+                  "notes": notes,
+                });
+
+                // Update subs collection if category is الكفالات
+                  if (selectedCategory == 'الكفالات' && selectedSubId != null) {
+                    try {
+                      final subDocRef = FirebaseFirestore.instance.collection('subs').doc(selectedSubId);
+                      final subDocSnapshot = await subDocRef.get();
+
+                      // Extract year and month from manualDate or default to current date
+                      final receiptDate = manualDate ?? now;
+                      final receiptYear = receiptDate.year.toString();
+                      final receiptMonth = receiptDate.month.toString();
+
+                      // Prepare the update structure
+                      Map<String, dynamic> updateData = {};
+
+                      if (subDocSnapshot.exists) {
+                        // If document exists, fetch the current data
+                        Map<String, dynamic> subData = subDocSnapshot.data() as Map<String, dynamic>;
+
+                        // Check if year exists, otherwise initialize it
+                        if (subData[receiptYear] == null) {
+                          subData[receiptYear] = {};
+                        }
+
+                        // Check if month exists, otherwise initialize it
+                        if (subData[receiptYear][receiptMonth] == null) {
+                          subData[receiptYear][receiptMonth] = [];
+                        }
+
+                        // Add the new receipt data to the month array
+                        (subData[receiptYear][receiptMonth] as List).add({
+                          "receipt_number": receiptNumber,
+                          "amount": amount,
+                        });
+
+                        updateData = {
+                          receiptYear: subData[receiptYear],
+                        };
+                      } else {
+                        // If document does not exist, create the structure
+                        updateData = {
+                          receiptYear: {
+                            receiptMonth: [
+                              {
+                                "receipt_number": receiptNumber,
+                                "amount": amount,
+                              }
+                            ]
+                          }
+                        };
+                      }
+
+                      // Update the Firestore document
+                      await subDocRef.set(updateData, SetOptions(merge: true));
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("تم تحديث الكفالة بنجاح")),
+                      );
+                    } catch (e) {
+                      print("Error updating subs collection: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("حدث خطأ أثناء تحديث الكفالة: $e")),
+                      );
+                    }
+                  }
+
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("تمت إضافة الإيصال بنجاح!")),
+                );
+              } catch (e) {
+                print("Error adding receipt: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("حدث خطأ أثناء الإضافة: $e")),
+                );
+              }
+            },
+            child: const Text("إضافة"),
+          ),
+        ],
+      ),
     ),
   );
 }
+
+Widget buildSingleSelectDropdown(
+    String label,
+    List<Map<String, dynamic>> items,
+    String? selectedItem,
+    Function(String?) onItemSelected,
+  ) {
+    TextEditingController searchController = TextEditingController();
+    List<Map<String, dynamic>> filteredItems = items; // Initially show all items
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Card(
+            child: Column(
+              children: [
+                // Label
+                Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'بحث',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        filteredItems = items
+                            .where((item) => item['name']
+                                .toString()
+                                .toLowerCase()
+                                .contains(value.toLowerCase()))
+                            .toList();
+                      });
+                    },
+                  ),
+                ),
+
+                // Items List (filteredItems)
+                ...filteredItems.map((item) {
+                  return RadioListTile<String>(
+                    value: item['id'],
+                    groupValue: selectedItem,
+                    title: Text(item['name'] ?? ''),
+                    onChanged: (value) {
+                      setState(() {
+                        onItemSelected(value);
+                      });
+                    },
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+
 
 
 
@@ -200,7 +399,7 @@ class _IncomePageState extends State<IncomePage> {
           '<td>${data['phone'] ?? 'غير معروف'}</td>'
           '<td>$amount</td>'
           '<td>${data['category'] ?? 'غير معروف'}</td>'
-          '<td>${formatDateTime(data['date_time'])}</td>'
+          '<td>${formatDateTime(data['manual_date'])}</td>'
           '<td>${data['notes'] ?? ''}</td>'
           '</tr>');
     }
@@ -240,7 +439,6 @@ class _IncomePageState extends State<IncomePage> {
   }
 }
 
-
   
  Future<void> _printReceipt(Map<String, dynamic> data) async {
   final buffer = StringBuffer();
@@ -268,7 +466,7 @@ class _IncomePageState extends State<IncomePage> {
   buffer.writeln('<tr><td>رقم الهاتف</td><td>${data['phone']}</td></tr>');
   buffer.writeln('<tr><td>المبلغ</td><td>${data['amount']}</td></tr>');
   buffer.writeln('<tr><td>الفئة</td><td>${data['category']}</td></tr>');
-  buffer.writeln('<tr><td>التاريخ</td><td>${formatDateTime(data['date_time'])}</td></tr>');
+  buffer.writeln('<tr><td>التاريخ</td><td>${formatDateTime(data['manual_date'])}</td></tr>');
   buffer.writeln('<tr><td>الملاحظات</td><td>${data['notes'] ?? ''}</td></tr>');
   buffer.writeln('</table>');
 
@@ -341,6 +539,12 @@ Future<void> _updateTotalAmount() async {
 
 
 
+
+
+
+
+
+
   String formatDateTime(String isoDate) {
     final dateTime = DateTime.parse(isoDate);
     final formattedDate = intl.DateFormat('dd MMMM yyyy', 'ar').format(dateTime);
@@ -380,13 +584,13 @@ Future<void> _updateTotalAmount() async {
 
                   final matchesDateRange = _startDate == null ||
                       _endDate == null ||
-                      (DateTime.parse(data['date_time'])
+                      (DateTime.parse(data['manual_date'])
                               .isAtSameMomentAs(_startDate!) ||
-                          DateTime.parse(data['date_time'])
+                          DateTime.parse(data['manual_date'])
                               .isAfter(_startDate!)) &&
-                          (DateTime.parse(data['date_time'])
+                          (DateTime.parse(data['manual_date'])
                                   .isAtSameMomentAs(_endDate!) ||
-                              DateTime.parse(data['date_time'])
+                              DateTime.parse(data['manual_date'])
                                   .isBefore(_endDate!.add(Duration(days: 1))));
 
                   return matchesNameOrReceipt &&
@@ -454,9 +658,10 @@ Future<void> _updateTotalAmount() async {
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('finance_log')
-                    .where('type', isEqualTo: 'in')
-                    .snapshots(),
+                  .collection('finance_log')
+                  .where('type', isEqualTo: 'in')
+                  .orderBy('id')
+                  .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -477,13 +682,13 @@ Future<void> _updateTotalAmount() async {
 
                     final matchesDateRange = _startDate == null ||
                         _endDate == null ||
-                        (DateTime.parse(data['date_time'])
+                        (DateTime.parse(data['manual_date'])
                                 .isAtSameMomentAs(_startDate!) ||
-                            DateTime.parse(data['date_time'])
+                            DateTime.parse(data['manual_date'])
                                 .isAfter(_startDate!)) &&
-                            (DateTime.parse(data['date_time'])
+                            (DateTime.parse(data['manual_date'])
                                     .isAtSameMomentAs(_endDate!) ||
-                                DateTime.parse(data['date_time'])
+                                DateTime.parse(data['manual_date'])
                                     .isBefore(_endDate!
                                         .add(const Duration(days: 1))));
 
@@ -510,7 +715,7 @@ Future<void> _updateTotalAmount() async {
                               Text("رقم الهاتف: ${log['phone']}"),
                               Text("المبلغ: ${log['amount']}"),
                               Text("الفئة: ${log['category']}"),
-                              Text("التاريخ: ${formatDateTime(log['date_time'])}"),
+                              Text("التاريخ: ${formatDateTime(log['manual_date'])}"),
                               Text("ملاحظات: ${log['notes'] ?? ''}"),
                             ],
                           ),
@@ -521,8 +726,10 @@ Future<void> _updateTotalAmount() async {
                                 icon: const Icon(Icons.print, color: Colors.teal),
                                 onPressed: () => _printReceipt(log),
                                 tooltip: "طباعة",
-                              ),                                                       
-                              ],
+                              ),
+                              
+                              
+                            ],
                           ),
                         ),
                       );

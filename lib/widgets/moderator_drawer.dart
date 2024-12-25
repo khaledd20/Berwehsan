@@ -4,6 +4,7 @@ import 'package:berwehsan/moderator/IncomePage.dart';
 import 'package:berwehsan/moderator/Itinerary.dart';
 import 'package:berwehsan/moderator/OutcomePage.dart';
 import 'package:berwehsan/moderator/SearchingPage.dart';
+import 'package:berwehsan/moderator/UserControl.dart';
 import 'package:berwehsan/moderator/area.dart';
 import 'package:berwehsan/moderator/cases.dart';
 import 'package:berwehsan/moderator/chests.dart';
@@ -30,6 +31,16 @@ class ModeratorDrawer extends StatelessWidget {
                 fontSize: 24,
               ),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.store),
+            title: const Text('إدارة المستخدمين'),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => UserControlPage()),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.store),
