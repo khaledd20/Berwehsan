@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui' as ui; // For ui.TextDirection
 import 'package:intl/intl.dart';
-import 'dart:html' as html;
+import 'dart:html' as html; // For printing
 
 class HistoryItemPage extends StatefulWidget {
   const HistoryItemPage({super.key});
@@ -16,12 +16,13 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
   DateTime? startDate;
   DateTime? endDate;
   String itemIdFilter = '';
-  String countFilter = '';
+  String commentsFilter = '';
+  String itemNameFilter = '';
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: ui.TextDirection.rtl, // RTL alignment
+      textDirection: ui.TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('سجل العناصر'),
@@ -29,11 +30,11 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.print),
-              onPressed: _printFilteredLogs, // Print function
+              onPressed: _printFilteredLogs,
             ),
           ],
         ),
-        drawer: userDrawer(), // Add the drawer here,
+        drawer: userDrawer(),
         body: Column(
           children: [
             // Filters
@@ -60,13 +61,27 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                     child: TextField(
                       textAlign: TextAlign.right,
                       decoration: const InputDecoration(
-                        labelText: 'بحث بالعدد',
+                        labelText: 'بحث بالملاحظات',
                         border: OutlineInputBorder(),
                       ),
-                      keyboardType: TextInputType.number,
                       onChanged: (value) {
                         setState(() {
-                          countFilter = value.trim();
+                          commentsFilter = value.trim();
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        labelText: 'بحث باسم العنصر',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          itemNameFilter = value.trim();
                         });
                       },
                     ),
@@ -91,14 +106,21 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                       );
                       if (pickedDate != null) {
                         setState(() {
-                          startDate = pickedDate;
+                          startDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                            0,
+                            0,
+                            0,
+                          );
                         });
                       }
                     },
                     child: Text(
                       startDate == null
                           ? 'تاريخ البداية'
-                          : DateFormat('yyyy-MM-dd').format(startDate!),
+                          : DateFormat('dd MMMM yyyy', 'ar').format(startDate!),
                     ),
                   ),
                   ElevatedButton(
@@ -111,14 +133,21 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                       );
                       if (pickedDate != null) {
                         setState(() {
-                          endDate = pickedDate;
+                          endDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                            23,
+                            59,
+                            59,
+                          );
                         });
                       }
                     },
                     child: Text(
                       endDate == null
                           ? 'تاريخ النهاية'
-                          : DateFormat('yyyy-MM-dd').format(endDate!),
+                          : DateFormat('dd MMMM yyyy', 'ar').format(endDate!),
                     ),
                   ),
                 ],
@@ -137,38 +166,46 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                   final logs = snapshot.data!.docs.where((log) {
                     final logData = log.data() as Map<String, dynamic>;
 
-                    // Validate data types
-                    if (logData['item_id'] is! int ||
-                        logData['count'] is! int) {
-                      return false; // Skip logs with invalid data types
-                    }
-
-                    // Filters
-                    final int itemId = logData['item_id'];
-                    final int count = logData['count'];
-                    final String createdAt = logData['created_at'] ?? '';
+                    // Parse `created_at` into `DateTime`
                     DateTime? logDate;
-                    try {
-                      logDate = DateTime.parse(createdAt);
-                    } catch (e) {
-                      return false; // Skip logs with invalid date format
+                    if (logData['created_at'] is Timestamp) {
+                      logDate = (logData['created_at'] as Timestamp).toDate();
+                    } else if (logData['created_at'] is String) {
+                      try {
+                        logDate = DateTime.parse(logData['created_at']);
+                      } catch (e) {
+                        return false;
+                      }
+                    } else {
+                      return false;
                     }
 
-                    if (startDate != null &&
-                        endDate != null &&
-                        (logDate.isBefore(startDate!) ||
-                            logDate.isAfter(endDate!))) {
-                      return false; // Date filter
+                    // Apply date filters
+                    if (startDate != null && logDate.isBefore(startDate!)) {
+                      return false;
+                    }
+                    if (endDate != null && logDate.isAfter(endDate!)) {
+                      return false;
                     }
 
+                    // Apply other filters
                     if (itemIdFilter.isNotEmpty &&
-                        !itemId.toString().contains(itemIdFilter)) {
-                      return false; // Item ID filter
+                        !logData['item_id'].toString().contains(itemIdFilter)) {
+                      return false;
                     }
-
-                    if (countFilter.isNotEmpty &&
-                        !count.toString().contains(countFilter)) {
-                      return false; // Count filter
+                    if (commentsFilter.isNotEmpty &&
+                        !logData['note']
+                            .toString()
+                            .toLowerCase()
+                            .contains(commentsFilter.toLowerCase())) {
+                      return false;
+                    }
+                    if (itemNameFilter.isNotEmpty &&
+                        !logData['item_name']
+                            .toString()
+                            .toLowerCase()
+                            .contains(itemNameFilter.toLowerCase())) {
+                      return false;
                     }
 
                     return true;
@@ -179,9 +216,20 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                     itemBuilder: (context, index) {
                       final log = logs[index].data() as Map<String, dynamic>;
                       final int itemId = log['item_id'];
-                      final int count = log['count'];
-                      final String status = log['status'] ?? 'غير معروف';
-                      final String createdAt = log['created_at'] ?? 'غير معروف';
+                      final String comments = log['note'] ?? 'غير محدد';
+                      final String itemName = log['item_name'] ?? 'غير محدد';
+
+                      String formattedDate;
+                      try {
+                        final DateTime parsedDate =
+                            log['created_at'] is Timestamp
+                                ? (log['created_at'] as Timestamp).toDate()
+                                : DateTime.parse(log['created_at']);
+                        formattedDate = DateFormat('dd MMMM yyyy - HH:mm', 'ar')
+                            .format(parsedDate);
+                      } catch (e) {
+                        formattedDate = 'غير معروف';
+                      }
 
                       return Card(
                         margin: const EdgeInsets.symmetric(
@@ -195,11 +243,11 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                  'الحالة: ${status == 'in' ? 'إضافة' : 'سحب'}',
+                              Text('اسم العنصر: $itemName',
                                   textAlign: TextAlign.right),
-                              Text('العدد: $count', textAlign: TextAlign.right),
-                              Text('تاريخ الإنشاء: $createdAt',
+                              Text('ملاحظات: $comments',
+                                  textAlign: TextAlign.right),
+                              Text('تاريخ الإنشاء: $formattedDate',
                                   textAlign: TextAlign.right),
                             ],
                           ),
@@ -216,49 +264,64 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
     );
   }
 
-  void _printFilteredLogs() async {
+  Future<void> _printFilteredLogs() async {
     final snapshot =
         await FirebaseFirestore.instance.collection('store_log').get();
 
+    // Apply filters to the logs
     final filteredLogs = snapshot.docs.where((log) {
       final logData = log.data() as Map<String, dynamic>;
 
-      if (logData['item_id'] is! int || logData['count'] is! int) {
-        return false;
-      }
-
-      final int itemId = logData['item_id'];
-      final int count = logData['count'];
-      final String createdAt = logData['created_at'] ?? '';
+      // Parse `created_at` into `DateTime`
       DateTime? logDate;
-      try {
-        logDate = DateTime.parse(createdAt);
-      } catch (e) {
+      if (logData['created_at'] is Timestamp) {
+        logDate = (logData['created_at'] as Timestamp).toDate();
+      } else if (logData['created_at'] is String) {
+        try {
+          logDate = DateTime.parse(logData['created_at']);
+        } catch (e) {
+          return false;
+        }
+      } else {
         return false;
       }
 
-      if (startDate != null &&
-          endDate != null &&
-          (logDate.isBefore(startDate!) || logDate.isAfter(endDate!))) {
+      // Apply date filters
+      if (startDate != null && logDate.isBefore(startDate!)) {
+        return false;
+      }
+      if (endDate != null && logDate.isAfter(endDate!)) {
         return false;
       }
 
+      // Apply text-based filters
       if (itemIdFilter.isNotEmpty &&
-          !itemId.toString().contains(itemIdFilter)) {
+          !logData['item_id'].toString().contains(itemIdFilter)) {
         return false;
       }
-
-      if (countFilter.isNotEmpty && !count.toString().contains(countFilter)) {
+      if (commentsFilter.isNotEmpty &&
+          !logData['note']
+              .toString()
+              .toLowerCase()
+              .contains(commentsFilter.toLowerCase())) {
+        return false;
+      }
+      if (itemNameFilter.isNotEmpty &&
+          !logData['item_name']
+              .toString()
+              .toLowerCase()
+              .contains(itemNameFilter.toLowerCase())) {
         return false;
       }
 
       return true;
     }).toList();
 
+    // Generate the HTML for printing
     final buffer = StringBuffer();
     buffer.writeln('<html>');
     buffer.writeln('<head>');
-    buffer.writeln('<meta charset="UTF-8">'); // Ensures proper text encoding
+    buffer.writeln('<meta charset="UTF-8">');
     buffer.writeln('<style>');
     buffer.writeln('table { width: 100%; border-collapse: collapse; }');
     buffer.writeln(
@@ -271,18 +334,30 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
     buffer.writeln('<h1>سجل العناصر</h1>');
     buffer.writeln('<table>');
     buffer.writeln(
-        '<tr><th>معرف العنصر</th><th>العدد</th><th>الحالة</th><th>تاريخ الإنشاء</th></tr>');
+        '<tr><th>معرف العنصر</th><th>اسم العنصر</th><th>ملاحظات</th><th>تاريخ الإنشاء</th></tr>');
 
     for (final log in filteredLogs) {
       final logData = log.data() as Map<String, dynamic>;
+      String formattedDate;
+      try {
+        final DateTime parsedDate = log['created_at'] is Timestamp
+            ? (log['created_at'] as Timestamp).toDate()
+            : DateTime.parse(log['created_at']);
+        formattedDate =
+            DateFormat('dd MMMM yyyy - HH:mm', 'ar').format(parsedDate);
+      } catch (e) {
+        formattedDate = 'غير معروف';
+      }
+
       buffer.writeln(
-          '<tr><td>${logData['item_id']}</td><td>${logData['count']}</td><td>${logData['status'] == 'in' ? 'إضافة' : 'سحب'}</td><td>${logData['created_at']}</td></tr>');
+          '<tr><td>${logData['item_id']}</td><td>${logData['item_name'] ?? 'غير محدد'}</td><td>${logData['note'] ?? 'غير محدد'}</td><td>$formattedDate</td></tr>');
     }
 
     buffer.writeln('</table>');
     buffer.writeln('</body>');
     buffer.writeln('</html>');
 
+    // Create a Blob for printing
     final blob = html.Blob([buffer.toString()], 'text/html');
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.window.open(url, '_blank');

@@ -1,4 +1,6 @@
-import 'package:berwehsan/admin/chests.dart'; // Admin page
+import 'package:berwehsan/Secretary/Feeding.dart';
+import 'package:berwehsan/accounting/incomePage.dart';
+import 'package:berwehsan/admin/cases.dart'; // Admin page
 import 'package:berwehsan/moderator/chests.dart'; // Moderator page
 import 'package:berwehsan/user/chests.dart'; // User page
 import 'package:flutter/material.dart';
@@ -44,7 +46,7 @@ class LoginScreenWeb extends StatelessWidget {
             );
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const AdminChestsPage()),
+              MaterialPageRoute(builder: (_) => const CasesPage()),
             );
           } else if (role == 2 ) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +56,7 @@ class LoginScreenWeb extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const ChestsPageModerator()),
             );
-          } else if (role == 1 || role == 4 || role == 5 ) {
+          } else if (role == 1 ) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('مرحبًا بك، المستخدم $fullName!')),
             );
@@ -62,6 +64,23 @@ class LoginScreenWeb extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const UserChestsPage()),
             );
+          } else if (role == 4 ) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('مرحبًا بك، سكيرتير $fullName!')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) =>  FeedingPage()),
+            );
+          } else if (role == 5 ) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('مرحبًا بك، محاسب $fullName!')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const IncomePage()),
+            );      
+            
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

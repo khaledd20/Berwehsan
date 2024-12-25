@@ -1,4 +1,4 @@
-import 'package:berwehsan/widgets/moderator_drawer.dart';
+import 'package:berwehsan/widgets/accounting_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui' as ui; // For ui.TextDirection
@@ -34,7 +34,7 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
             ),
           ],
         ),
-        drawer: ModeratorDrawer(),
+        drawer: AccountingDrawer(),
         body: Column(
           children: [
             // Filters

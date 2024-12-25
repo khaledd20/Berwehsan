@@ -1,4 +1,4 @@
-import 'package:berwehsan/widgets/user_drawer.dart';
+import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui' as ui; // For ui.TextDirection
@@ -24,7 +24,7 @@ class _FeedingHistoryPageState extends State<FeedingHistoryPage> {
           title: const Text('سجل الإطعام'),
           centerTitle: true,
         ),
-        drawer: userDrawer(),
+        drawer: AdminDrawer(),
         body: Column(
           children: [
             // Single Date Filter

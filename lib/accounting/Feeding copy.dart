@@ -1,4 +1,4 @@
-import 'package:berwehsan/widgets/moderator_drawer.dart';
+import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html;
@@ -175,7 +175,7 @@ class _FeedingPageState extends State<FeedingPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: const Text('إدارة الإطعام')),
-        drawer: ModeratorDrawer(),
+        drawer: AdminDrawer(),
         body: Column(
           children: [
             // Dropdown to select area
