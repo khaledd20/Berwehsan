@@ -64,13 +64,13 @@ class LoginScreenWeb extends StatelessWidget {
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('دور المستخدم غير صالح')),
+              const SnackBar(content: Text('دور المستخدم غير صالح')),
             );
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('اسم المستخدم أو كلمة المرور غير صحيحة')),
+            const SnackBar(
+                content: Text('اسم المستخدم أو كلمة المرور غير صحيحة')),
           );
         }
       } catch (e) {
@@ -160,8 +160,8 @@ class LoginScreenWeb extends StatelessWidget {
                               ),
                               child: const Text(
                                 'تسجيل الدخول',
-                                style:
-                                    TextStyle(color: Colors.white, fontSize: 16),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 16),
                               ),
                             ),
                           ),

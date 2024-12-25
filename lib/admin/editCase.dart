@@ -17,6 +17,7 @@ class _EditCaseState extends State<EditCase> {
   final TextEditingController idController =
       TextEditingController(); // Add this
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController MotherNameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController socialStatusController = TextEditingController();
   final TextEditingController incomeController = TextEditingController();
@@ -46,6 +47,7 @@ class _EditCaseState extends State<EditCase> {
   }
 
   // Fetch case details from Firestore
+// Fetch case details from Firestore
   Future<void> fetchCaseDetails() async {
     try {
       final caseSnapshot = await FirebaseFirestore.instance
@@ -56,27 +58,36 @@ class _EditCaseState extends State<EditCase> {
       final data = caseSnapshot.data();
       if (data != null) {
         setState(() {
-          idController.text = data['id'].toString(); // Populate id field
-          nameController.text = data['name'];
-          locationController.text = data['location'];
-          socialStatusController.text = data['social_status'];
-          incomeController.text = data['in_come'].toString();
-          familyCountController.text = data['family_count'].toString();
-          idNumberController.text = data['ID_Number'];
-          numberController.text = data['number'];
-          cSizeController.text = data['c_size'];
-          sSizeController.text = data['S_size'];
-          ageController.text = data['age'].toString();
-          gradeIdController.text = data['grade_id'];
-          balanceController.text = data['balance'].toString();
-          selectedAreaId = data['area_id'].toString();
+          idController.text =
+              (data['id'] ?? '').toString(); // Populate id field
+          nameController.text = data['name'] ?? '';
+          MotherNameController.text = data['Mother_Name'] ?? '';
+          locationController.text = data['location'] ?? '';
+          socialStatusController.text = data['social_status'] ?? '';
+          incomeController.text = (data['in_come'] ?? '').toString();
+          familyCountController.text = (data['family_count'] ?? '').toString();
+          idNumberController.text = data['ID_Number'] ?? '';
+          numberController.text = data['number'] ?? '';
+          cSizeController.text = data['c_size'] ?? '';
+          sSizeController.text = data['S_size'] ?? '';
+          ageController.text = (data['age'] ?? '').toString();
+          gradeIdController.text = data['grade_id'] ?? '';
+          balanceController.text = (data['balance'] ?? '').toString();
+          selectedAreaId = (data['area_id'] ?? '').toString();
           selectedChestIds =
               List<int>.from(data['chest_ids'] ?? []); // Chest IDs
           selectedSubIds = List<int>.from(data['sub_ids'] ?? []); // Sub IDs
         });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لم يتم العثور على تفاصيل الحالة')),
+        );
       }
     } catch (error) {
       print('Error fetching case details: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء جلب تفاصيل الحالة: $error')),
+      );
     }
   }
 
@@ -188,6 +199,7 @@ class _EditCaseState extends State<EditCase> {
       final formData = {
         'id': newId, // Update the ID
         'name': nameController.text,
+        'Mother_Name': MotherNameController.text,
         'location': locationController.text,
         'social_status': socialStatusController.text,
         'in_come': int.tryParse(incomeController.text) ?? 0,
@@ -238,6 +250,8 @@ class _EditCaseState extends State<EditCase> {
                 buildTextField('رقم الحالة', 'أدخل رقم الحالة', idController,
                     inputType: TextInputType.number),
                 buildTextField('الاسم', 'أدخل الاسم', nameController),
+                buildTextField(
+                    'اسم الأم', 'أدخل اسم الأم', MotherNameController),
                 buildTextField('العنوان', 'أدخل العنوان', locationController),
                 buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية',
                     socialStatusController),

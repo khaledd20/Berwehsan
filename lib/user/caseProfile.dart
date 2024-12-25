@@ -118,12 +118,19 @@ class CaseProfile extends StatelessWidget {
 
   /// Helper method to generate detail rows with labels and values side by side
   List<Widget> _buildDetails(Map<String, dynamic> caseData) {
+    final areaId = caseData['area_id'];
+    final areaNameFuture = FirebaseFirestore.instance
+        .collection('areas')
+        .where('id', isEqualTo: areaId)
+        .get();
+
     final details = [
       {
         'label': 'رقم الحالة:',
         'value': caseData['id']?.toString() ?? 'غير معروف'
       },
       {'label': 'الاسم:', 'value': caseData['name'] ?? 'غير معروف'},
+      {'label': 'اسم الأم:', 'value': caseData['Mother_Name'] ?? 'غير معروف'},
       {
         'label': 'الرقم القومي:',
         'value': caseData['ID_Number']?.toString() ?? 'غير معروف'
@@ -146,10 +153,7 @@ class CaseProfile extends StatelessWidget {
         'value': caseData['family_count']?.toString() ?? 'غير معروف'
       },
       {'label': 'مقاس الملابس:', 'value': caseData['c_size'] ?? 'غير معروف'},
-      {
-        'label': 'مقاس الحذاء:',
-        'value': caseData['S_size'] ?? 'غير معروف'
-      },
+      {'label': 'مقاس الحذاء:', 'value': caseData['S_size'] ?? 'غير معروف'},
       {'label': 'العمر:', 'value': caseData['age']?.toString() ?? 'غير معروف'},
       {
         'label': 'المرحلة الدراسية:',
@@ -157,7 +161,22 @@ class CaseProfile extends StatelessWidget {
       },
       {
         'label': 'المنطقة:',
-        'value': caseData['area_id']?.toString() ?? 'غير معروف'
+        'value': areaId == null
+            ? const Text('غير معروف')
+            : FutureBuilder<QuerySnapshot>(
+                future: areaNameFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Text('تحميل...');
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Text('غير معروف');
+                  }
+                  final areaData =
+                      snapshot.data!.docs.first.data() as Map<String, dynamic>;
+                  return Text(areaData['name'] ?? 'غير معروف');
+                },
+              ),
       },
       {
         'label': 'القبض:',
@@ -169,7 +188,7 @@ class CaseProfile extends StatelessWidget {
         .map((detail) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Row(
-                textDirection: TextDirection.rtl, // Ensure RTL alignment
+                textDirection: TextDirection.rtl,
                 children: [
                   Flexible(
                     flex: 1,
@@ -183,11 +202,13 @@ class CaseProfile extends StatelessWidget {
                   const SizedBox(width: 8),
                   Flexible(
                     flex: 2,
-                    child: Text(
-                      detail['value']!,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    child: detail['value'] is Widget
+                        ? detail['value']
+                        : Text(
+                            detail['value']!,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 16),
+                          ),
                   ),
                 ],
               ),
@@ -600,11 +621,57 @@ class CaseProfile extends StatelessWidget {
                 if (payments.isNotEmpty)
                   ...payments.map((payment) {
                     final paymentData = payment.data() as Map<String, dynamic>;
+                    final paymentId = payment.id;
+
                     return ListTile(
                       title: Text(
                           'التاريخ: ${paymentData['created_at'] ?? 'غير معروف'}'),
                       subtitle: Text(
                           'المبلغ: ${paymentData['credit'] ?? 'غير معروف'}'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('تأكيد الحذف'),
+                                content: const Text(
+                                    'هل أنت متأكد أنك تريد حذف هذه الدفعة؟'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: const Text('إلغاء'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop(false);
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: const Text('حذف'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop(true);
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (confirm == true) {
+                            await FirebaseFirestore.instance
+                                .collection('cashs')
+                                .doc(paymentId)
+                                .delete();
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('تم حذف الدفعة بنجاح.')),
+                            );
+
+                            // Refresh the section
+                            (context as Element).reassemble();
+                          }
+                        },
+                      ),
                     );
                   }).toList(),
               ],

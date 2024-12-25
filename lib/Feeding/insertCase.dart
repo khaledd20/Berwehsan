@@ -11,7 +11,6 @@ class _InsertCaseState extends State<InsertCase> {
 
   // Controllers for text fields
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController motherNameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController socialStatusController = TextEditingController();
   final TextEditingController incomeController = TextEditingController();
@@ -22,14 +21,13 @@ class _InsertCaseState extends State<InsertCase> {
   final TextEditingController sSizeController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController gradeIdController = TextEditingController();
-  final TextEditingController balanceController = TextEditingController();
+  final TextEditingController balanceController =
+      TextEditingController(); // New controller for `balance`
 
   String? selectedAreaId;
   List<Map<String, dynamic>> areas = [];
   List<Map<String, dynamic>> chests = [];
   List<Map<String, dynamic>> subs = [];
-  List<Map<String, dynamic>> filteredChests = [];
-  List<Map<String, dynamic>> filteredSubs = [];
   List<int> selectedChestIds = [];
   List<int> selectedSubIds = [];
 
@@ -65,11 +63,10 @@ class _InsertCaseState extends State<InsertCase> {
       setState(() {
         chests = chestsSnapshot.docs.map((doc) {
           return {
-            'id': doc['id'],
+            'id': doc['id'], // ID is expected to be a number
             'name': doc['name'].toString(),
           };
         }).toList();
-        filteredChests = List.from(chests);
       });
     } catch (error) {
       print('Error fetching chests: $error');
@@ -83,49 +80,13 @@ class _InsertCaseState extends State<InsertCase> {
       setState(() {
         subs = subsSnapshot.docs.map((doc) {
           return {
-            'id': doc['id'],
+            'id': doc['id'], // ID is expected to be a number
             'name': doc['name'].toString(),
           };
         }).toList();
-        filteredSubs = List.from(subs);
       });
     } catch (error) {
       print('Error fetching subs: $error');
-    }
-  }
-
-  void filterChests(String query) {
-    setState(() {
-      filteredChests = chests
-          .where((chest) =>
-              chest['name'].toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
-  void filterSubs(String query) {
-    setState(() {
-      filteredSubs = subs
-          .where(
-              (sub) => sub['name'].toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
-  Future<int> getNextAvailableId() async {
-    try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('cases')
-          .orderBy('id', descending: true)
-          .limit(1)
-          .get();
-      if (querySnapshot.docs.isNotEmpty) {
-        return querySnapshot.docs.first['id'] + 1;
-      }
-      return 1; // Start from 1 if no documents exist
-    } catch (error) {
-      print('Error fetching next ID: $error');
-      return 1; // Default to 1 in case of an error
     }
   }
 
@@ -133,32 +94,52 @@ class _InsertCaseState extends State<InsertCase> {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      final nextId = await getNextAvailableId();
-
+      // Collect all field values
       final formData = {
-        'id': nextId,
         'name': nameController.text,
-        'mother_name': motherNameController.text,
         'location': locationController.text,
         'social_status': socialStatusController.text,
-        'income': int.tryParse(incomeController.text) ?? 0,
+        'in_come':
+            int.tryParse(incomeController.text) ?? 0, // Convert to integer
         'family_count': int.tryParse(familyCountController.text) ?? 0,
-        'id_number': idNumberController.text,
-        'phone_number': numberController.text,
-        'clothes_size': cSizeController.text,
-        'shoe_size': sSizeController.text,
+        'ID_Number': idNumberController.text,
+        'number': numberController.text,
+        'c_size': cSizeController.text,
+        'S_size': sSizeController.text,
         'age': int.tryParse(ageController.text) ?? 0,
         'grade_id': gradeIdController.text,
-        'balance': int.tryParse(balanceController.text) ?? 0,
         'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
-        'chest_ids': selectedChestIds,
-        'sub_ids': selectedSubIds,
+        'chest_ids': selectedChestIds, // Store as numbers
+        'sub_ids': selectedSubIds, // Store as numbers
+        'balance': int.tryParse(balanceController.text) ??
+            0, // Parse and store as number
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
         'status': 'مفعل',
       };
 
-      await FirebaseFirestore.instance.collection('cases').doc().set(formData);
+      // Generate the smallest available ID starting from 1
+      int nextId = 1;
+      bool idExists = true;
+
+      while (idExists) {
+        final existingCase = await FirebaseFirestore.instance
+            .collection('cases')
+            .where('id', isEqualTo: nextId)
+            .get();
+
+        if (existingCase.docs.isEmpty) {
+          idExists = false; // ID is available
+        } else {
+          nextId++; // Check the next ID
+        }
+      }
+
+      formData['id'] = nextId;
+
+      // Save the data to Firestore
+      final docRef = FirebaseFirestore.instance.collection('cases').doc();
+      await docRef.set(formData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
@@ -189,8 +170,6 @@ class _InsertCaseState extends State<InsertCase> {
             child: ListView(
               children: [
                 buildTextField('الاسم', 'أدخل الاسم', nameController),
-                buildTextField(
-                    'اسم الأم', 'أدخل اسم الأم', motherNameController),
                 buildTextField('العنوان', 'أدخل العنوان', locationController),
                 buildTextField('الحالة الاجتماعية', 'أدخل الحالة الاجتماعية',
                     socialStatusController),
@@ -200,26 +179,24 @@ class _InsertCaseState extends State<InsertCase> {
                     familyCountController,
                     inputType: TextInputType.number),
                 buildTextField(
-                    'رقم الهوية', 'أدخل رقم الهوية', idNumberController),
-                buildTextField(
-                    'رقم الهاتف', 'أدخل رقم الهاتف', numberController),
+                    'الرقم القومي', 'أدخل الرقم القومي', idNumberController),
+                buildTextField('رقم هاتف', 'أدخل رقم الهاتف', numberController,
+                    inputType: TextInputType.phone),
                 buildTextField(
                     'مقاس الملابس', 'أدخل مقاس الملابس', cSizeController),
                 buildTextField(
-                    'مقاس الحذاء', 'أدخل مقاس الحذاء', sSizeController),
+                    'مقاس  الحذاء', 'أدخل مقاس  الحذاء', sSizeController),
                 buildTextField('العمر', 'أدخل العمر', ageController,
                     inputType: TextInputType.number),
+                buildTextField('القبض', 'أدخل القبض', balanceController,
+                    inputType: TextInputType.number), // New balance field
+                buildAreaDropdown(),
+                buildMultiSelectDropdown(
+                    'اختر الصناديق', chests, selectedChestIds),
+                buildMultiSelectDropdown(
+                    'اختر المشتركين', subs, selectedSubIds),
                 buildTextField('المرحلة الدراسية', 'أدخل المرحلة الدراسية',
                     gradeIdController),
-                buildTextField('الرصيد', 'أدخل الرصيد', balanceController,
-                    inputType: TextInputType.number),
-                buildTextField('القبض', 'أدخل القبض', balanceController,
-                    inputType: TextInputType.number),
-                buildAreaDropdown(),
-                buildSearchableDropdown('اختر الصناديق', filteredChests,
-                    selectedChestIds, filterChests),
-                buildSearchableDropdown(
-                    'اختر المشتركين', filteredSubs, selectedSubIds, filterSubs),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -292,25 +269,14 @@ class _InsertCaseState extends State<InsertCase> {
     );
   }
 
-  Widget buildSearchableDropdown(String label, List<Map<String, dynamic>> items,
-      List<int> selectedItems, Function(String) onSearch) {
+  Widget buildMultiSelectDropdown(
+      String label, List<Map<String, dynamic>> items, List<int> selectedItems) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Card(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  labelText: 'بحث',
-                  hintText: 'ابحث عن $label',
-                  border: const OutlineInputBorder(),
-                ),
-                onChanged: (value) => onSearch(value),
-              ),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
             ...items.map((item) {
               return CheckboxListTile(
                 value: selectedItems.contains(item['id']),

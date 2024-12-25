@@ -1,6 +1,6 @@
+import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:berwehsan/widgets/admin_drawer.dart';
 
 class UserControlPage extends StatefulWidget {
   const UserControlPage({super.key});
@@ -25,10 +25,10 @@ class _UserControlPageState extends State<UserControlPage> {
       textDirection: TextDirection.rtl, // Set Right-to-Left alignment
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('إدارة جميع المستخدمين'),
+          title: const Text('إدارة المستخدمين للمشرف'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(),
+        drawer: ModeratorDrawer(),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -103,14 +103,6 @@ class _UserControlPageState extends State<UserControlPage> {
                         DropdownMenuItem(
                           value: "مستخدم الاطعام",
                           child: Text('مستخدم الاطعام'),
-                        ),
-                        DropdownMenuItem(
-                          value: "Admin",
-                          child: Text('Admin'),
-                        ),
-                        DropdownMenuItem(
-                          value: "المدير",
-                          child: Text('المدير'),
                         ),
                       ],
                       onChanged: (value) {
@@ -222,7 +214,8 @@ class _UserControlPageState extends State<UserControlPage> {
   // Build User List
   Widget _buildUserList() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('admins').snapshots(),
+      stream: FirebaseFirestore.instance.collection('admins').where('Role',
+          whereIn: ['مستخدم', 'مستخدم للمحاسبه', 'مستخدم الاطعام']).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
