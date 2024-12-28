@@ -248,21 +248,22 @@ class _InsertCaseState extends State<InsertCase> {
       try {
       // Validate fields as before (omitted for brevity)
 
-      // Generate the next ID atomically
-      int nextId = await FirebaseFirestore.instance.runTransaction((transaction) async {
-        DocumentReference counterRef = FirebaseFirestore.instance.collection('metadata').doc('case_counter');
-        DocumentSnapshot snapshot = await transaction.get(counterRef);
+       // Find the next available ID in the `cases` collection
+        int nextId = 1;
+        bool idFound = false;
 
-        if (!snapshot.exists) {
-          // Initialize the counter if it doesn't exist
-          transaction.set(counterRef, {'next_case_id': 1});
-          return 1;
+        while (!idFound) {
+          final querySnapshot = await FirebaseFirestore.instance
+              .collection('cases')
+              .where('id', isEqualTo: nextId)
+              .get();
+
+          if (querySnapshot.docs.isEmpty) {
+            idFound = true; // No document with this ID exists
+          } else {
+            nextId++; // Check the next ID
+          }
         }
-
-        int currentId = snapshot['next_case_id'] as int;
-        transaction.update(counterRef, {'next_case_id': currentId + 1});
-        return currentId;
-      });
 
       // Prepare form data
       final formData = {
