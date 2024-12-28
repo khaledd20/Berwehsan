@@ -1,3 +1,4 @@
+import 'package:berwehsan/widgets/accounting_drawer.dart';
 import 'package:berwehsan/widgets/secretary_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,7 +16,7 @@ class AreasPage extends StatelessWidget {
           title: const Text('جميع المناطق'),
           centerTitle: true,
         ),
-        drawer: SecretaryDrawer(),
+        drawer: AccountingDrawer(),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _addArea(context),
           child: const Icon(Icons.add),

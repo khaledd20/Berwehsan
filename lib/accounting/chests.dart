@@ -559,9 +559,12 @@ void _updateChestBalance(
     context: context,
     builder: (context) {
       final TextEditingController balanceController = TextEditingController();
+      final TextEditingController manualNameController =
+          TextEditingController();
       DateTime? selectedDate;
       String? selectedEntityId; // Holds the selected donor/case ID
       String? selectedEntityName; // Holds the selected donor/case name
+      bool isManualInput = false; // Toggle between manual input and selection
 
       return StatefulBuilder(builder: (context, setState) {
         return AlertDialog(
@@ -606,34 +609,74 @@ void _updateChestBalance(
                 ),
                 const SizedBox(height: 16),
 
-                // Single Select Dropdown for Donor or Case
-                FutureBuilder<QuerySnapshot>(
-                  future: FirebaseFirestore.instance
-                      .collection(isAdd ? 'subs' : 'cases')
-                      .get(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const CircularProgressIndicator();
-                    }
-                    final entities = snapshot.data!.docs.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      return {'id': doc.id, 'name': data['name']};
-                    }).toList();
-
-                    return buildSingleSelectDropdown(
-                      isAdd ? 'اختر المتبرع' : 'اختر الحالة',
-                      entities,
-                      selectedEntityId,
-                      (value) {
-                        setState(() {
-                          selectedEntityId = value;
-                          selectedEntityName = entities
-                              .firstWhere((item) => item['id'] == value)['name'];
-                        });
-                      },
-                    );
-                  },
+                // Toggle Between Manual Input and Collection Selection
+                Row(
+                  children: [
+                    Expanded(
+                      child: RadioListTile<bool>(
+                        title: const Text('اختر من القائمة'),
+                        value: false,
+                        groupValue: isManualInput,
+                        onChanged: (value) {
+                          setState(() {
+                            isManualInput = value!;
+                          });
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: RadioListTile<bool>(
+                        title: const Text('إضافة يدويًا'),
+                        value: true,
+                        groupValue: isManualInput,
+                        onChanged: (value) {
+                          setState(() {
+                            isManualInput = value!;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
+
+                // Show Dropdown or Manual Input Based on Selection
+                if (!isManualInput)
+                  FutureBuilder<QuerySnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection(isAdd ? 'subs' : 'cases')
+                        .get(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const CircularProgressIndicator();
+                      }
+                      final entities = snapshot.data!.docs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return {'id': doc.id, 'name': data['name']};
+                      }).toList();
+
+                      return buildSingleSelectDropdown(
+                        isAdd ? 'اختر المتبرع' : 'اختر الحالة',
+                        entities,
+                        selectedEntityId,
+                        (value) {
+                          setState(() {
+                            selectedEntityId = value;
+                            selectedEntityName = entities
+                                .firstWhere(
+                                    (item) => item['id'] == value)['name'];
+                          });
+                        },
+                      );
+                    },
+                  )
+                else
+                  TextField(
+                    controller: manualNameController,
+                    decoration: InputDecoration(
+                      labelText: isAdd ? 'اسم المتبرع' : 'اسم الحالة',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -647,9 +690,12 @@ void _updateChestBalance(
                 final int updateAmount =
                     int.tryParse(balanceController.text) ?? 0;
 
+                // Validate inputs
                 if (updateAmount <= 0 ||
                     selectedDate == null ||
-                    selectedEntityId == null) {
+                    (!isManualInput &&
+                        (selectedEntityId == null || selectedEntityName == null)) ||
+                    (isManualInput && manualNameController.text.trim().isEmpty)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                         content:
@@ -681,10 +727,12 @@ void _updateChestBalance(
                   'amount': updateAmount,
                   'status': isAdd ? 'in' : 'out',
                   'before_amount': beforeAmount,
-                  'after_amount': afterAmount,                                    
+                  'after_amount': afterAmount,
                   'created_date': currentTime,
                   'created_at': selectedDate?.toIso8601String(),
-                  isAdd ? 'donor_name' : 'case_name': selectedEntityName,
+                  isAdd ? 'donor_name' : 'case_name': isManualInput
+                      ? manualNameController.text
+                      : selectedEntityName,
                 });
 
                 Navigator.pop(context);
@@ -706,6 +754,8 @@ void _updateChestBalance(
     },
   );
 }
+
+
 
 
 

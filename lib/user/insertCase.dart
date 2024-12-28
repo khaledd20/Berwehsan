@@ -117,178 +117,197 @@ void filterSubs(String query) {
 
 
   Future<void> submitForm() async {
-  // Start loading state
-  if (isLoading) return;
-  setState(() {
-    isLoading = true;
-  });
+    // Start loading state
+    if (isLoading) return;
+    setState(() {
+      isLoading = true;
+    });
 
-  // Perform manual validation for all fields
-  if (nameController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال الاسم');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (motherNameController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال اسم الأم');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (locationController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال العنوان');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (socialStatusController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال الحالة الاجتماعية');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (incomeController.text.trim().isEmpty ||
-      int.tryParse(incomeController.text.trim()) == null) {
-    _showError('الرجاء إدخال الدخل (رقم صحيح)');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (familyCountController.text.trim().isEmpty ||
-      int.tryParse(familyCountController.text.trim()) == null) {
-    _showError('الرجاء إدخال عدد أفراد الأسرة (رقم صحيح)');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (idNumberController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال الرقم القومي');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (numberController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال رقم الهاتف');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (cSizeController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال مقاس الملابس');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (sSizeController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال مقاس الحذاء');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (ageController.text.trim().isEmpty ||
-      int.tryParse(ageController.text.trim()) == null) {
-    _showError('الرجاء إدخال العمر (رقم صحيح)');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (balanceController.text.trim().isEmpty ||
-      int.tryParse(balanceController.text.trim()) == null) {
-    _showError('الرجاء إدخال القبض (رقم صحيح)');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-  if (gradeIdController.text.trim().isEmpty) {
-    _showError('الرجاء إدخال المرحلة الدراسية');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
+    // Perform manual validation for all fields
+    if (nameController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال الاسم');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (motherNameController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال اسم الأم');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (locationController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال العنوان');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (socialStatusController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال الحالة الاجتماعية');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (incomeController.text.trim().isEmpty ||
+        int.tryParse(incomeController.text.trim()) == null) {
+      _showError('الرجاء إدخال الدخل (رقم صحيح)');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (familyCountController.text.trim().isEmpty ||
+        int.tryParse(familyCountController.text.trim()) == null) {
+      _showError('الرجاء إدخال عدد أفراد الأسرة (رقم صحيح)');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (idNumberController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال الرقم القومي');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (numberController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال رقم الهاتف');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (cSizeController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال مقاس الملابس');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (sSizeController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال مقاس الحذاء');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (ageController.text.trim().isEmpty ||
+        int.tryParse(ageController.text.trim()) == null) {
+      _showError('الرجاء إدخال العمر (رقم صحيح)');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (balanceController.text.trim().isEmpty ||
+        int.tryParse(balanceController.text.trim()) == null) {
+      _showError('الرجاء إدخال القبض (رقم صحيح)');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+    if (gradeIdController.text.trim().isEmpty) {
+      _showError('الرجاء إدخال المرحلة الدراسية');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
 
-  // Additional validations for selectedAreaId, selectedChestIds, and selectedSubIds
-  if (selectedAreaId == null || selectedAreaId!.isEmpty) {
-    _showError('يرجى اختيار المنطقة');
-    setState(() {
-      isLoading = false;
-    });
-    return;
+    // Additional validations for selectedAreaId, selectedChestIds, and selectedSubIds
+    if (selectedAreaId == null || selectedAreaId!.isEmpty) {
+      _showError('يرجى اختيار المنطقة');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    if (selectedChestIds.isEmpty) {
+      _showError('يرجى اختيار صندوق واحد على الأقل');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    if (selectedSubIds.isEmpty) {
+      _showError('يرجى اختيار مشترك واحد على الأقل');
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+      try {
+      // Validate fields as before (omitted for brevity)
+
+      // Generate the next ID atomically
+      int nextId = await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentReference counterRef = FirebaseFirestore.instance.collection('metadata').doc('case_counter');
+        DocumentSnapshot snapshot = await transaction.get(counterRef);
+
+        if (!snapshot.exists) {
+          // Initialize the counter if it doesn't exist
+          transaction.set(counterRef, {'next_case_id': 1});
+          return 1;
+        }
+
+        int currentId = snapshot['next_case_id'] as int;
+        transaction.update(counterRef, {'next_case_id': currentId + 1});
+        return currentId;
+      });
+
+      // Prepare form data
+      final formData = {
+        'id': nextId,
+        'name': nameController.text,
+        'mother_name': motherNameController.text,
+        'location': locationController.text,
+        'social_status': socialStatusController.text,
+        'in_come': int.tryParse(incomeController.text) ?? 0,
+        'family_count': int.tryParse(familyCountController.text) ?? 0,
+        'ID_Number': idNumberController.text,
+        'number': numberController.text,
+        'c_size': cSizeController.text,
+        'S_size': sSizeController.text,
+        'age': int.tryParse(ageController.text) ?? 0,
+        'grade_id': gradeIdController.text,
+        'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
+        'chest_ids': selectedChestIds,
+        'sub_ids': selectedSubIds,
+        'balance': int.tryParse(balanceController.text) ?? 0,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'status': 'مفعل',
+      };
+
+      // Save the data to Firestore
+      final docRef = FirebaseFirestore.instance.collection('cases').doc();
+      await docRef.set(formData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
+      );
+
+      Navigator.pop(context);
+    } catch (error) {
+      print('Error during submission: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
-
-  if (selectedChestIds.isEmpty) {
-    _showError('يرجى اختيار صندوق واحد على الأقل');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-
-  if (selectedSubIds.isEmpty) {
-    _showError('يرجى اختيار مشترك واحد على الأقل');
-    setState(() {
-      isLoading = false;
-    });
-    return;
-  }
-
-  // If all validations pass, proceed with saving
-  try {
-    final formData = {
-      'name': nameController.text,
-      'mother_name': motherNameController.text,
-      'location': locationController.text,
-      'social_status': socialStatusController.text,
-      'in_come': int.tryParse(incomeController.text) ?? 0,
-      'family_count': int.tryParse(familyCountController.text) ?? 0,
-      'ID_Number': idNumberController.text,
-      'number': numberController.text,
-      'c_size': cSizeController.text,
-      'S_size': sSizeController.text,
-      'age': int.tryParse(ageController.text) ?? 0,
-      'grade_id': gradeIdController.text,
-      'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
-      'chest_ids': selectedChestIds,
-      'sub_ids': selectedSubIds,
-      'balance': int.tryParse(balanceController.text) ?? 0,
-      'created_at': DateTime.now().toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
-      'status': 'مفعل',
-    };
-
-    // Save the data to Firestore
-    final docRef = FirebaseFirestore.instance.collection('cases').doc();
-    await docRef.set(formData);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ الحالة بنجاح')),
-    );
-
-    Navigator.pop(context);
-  } catch (error) {
-    print('Error during submission: $error');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('خطأ أثناء حفظ الحالة: $error')),
-    );
-  } finally {
-    setState(() {
-      isLoading = false;
-    });
-  }
-}
 // Helper function to show error messages
 void _showError(String message) {
   ScaffoldMessenger.of(context).showSnackBar(

@@ -3,6 +3,7 @@ import 'package:berwehsan/Secretary/feedingHistory.dart';
 import 'package:berwehsan/Secretary/sub.dart';
 import 'package:berwehsan/login.dart';
 import 'package:flutter/material.dart';
+import '../Secretary/SearchingPage.dart';
 import '../Secretary/cases.dart';
 import '../Secretary/area.dart';
 import '../Secretary/items/viewItems.dart';
@@ -97,6 +98,16 @@ class SecretaryDrawer extends StatelessWidget {
               );
             },
           ),
+          ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: const Text('بحث الحالات'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => SearchingPage()),
+                );
+              },
+            ),
           ListTile(
               leading: const Icon(Icons.login),
               title: const Text('تسجيل خروج'),

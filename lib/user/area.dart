@@ -1,4 +1,4 @@
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/widgets/user_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html; // For web-based printing
@@ -15,7 +15,7 @@ class AreasPage extends StatelessWidget {
           title: const Text('جميع المناطق'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(),
+        drawer: userDrawer(),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _addArea(context),
           child: const Icon(Icons.add),

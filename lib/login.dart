@@ -111,7 +111,7 @@ class LoginScreenWeb extends StatelessWidget {
                 children: [
                   // Display Image
                   Image.asset(
-                    'images/image.png',
+                    'assets/images/image.png',
                     width: 150,
                     height: 150,
                     fit: BoxFit.cover,

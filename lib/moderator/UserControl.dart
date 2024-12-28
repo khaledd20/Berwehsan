@@ -1,4 +1,5 @@
 import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/widgets/moderator_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -33,7 +34,7 @@ class _UserControlPageState extends State<UserControlPage> {
           title: const Text('إدارة المستخدمين'),
           centerTitle: true,
         ),
-        drawer: AdminDrawer(), // Add the AdminDrawer here
+        drawer: ModeratorDrawer(), // Add the AdminDrawer here
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
