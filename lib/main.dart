@@ -1,8 +1,10 @@
+import 'package:berwehsan/admin/RestoreManager.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:intl/date_symbol_data_local.dart'; // For locale initialization
 import 'package:berwehsan/login.dart'; // Ensure this path is correct
+import 'package:berwehsan/admin/BackupManager.dart'; // Import the BackupManager
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,9 +22,24 @@ void main() async {
       measurementId: "G-062S5X7BKD",
     ),
   );
+  // Perform the backup
+  await performInitialBackup();
 
   runApp(const MyApp());
 }
+
+Future<void> performInitialBackup() async {
+  final backupManager = BackupManager();
+  try {
+    print("Starting backup process...");
+    await backupManager.performBackup();
+    print("Backup process completed.");
+  } catch (e) {
+    print("Error during backup: $e");
+  }
+}
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
