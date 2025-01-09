@@ -209,6 +209,9 @@ void _addReceipt() {
     int totalAmount = 0; 
     int balance = 0;
 
+
+    await _updateTotalAmount(); // Recalculate total balance
+
     // Fetch the balance from the 'finance/الاجمالي' document
     final financeDoc = await FirebaseFirestore.instance
         .collection('finance')
@@ -218,6 +221,17 @@ void _addReceipt() {
     if (financeDoc.exists) {
       balance = (financeDoc.data()?['balance'] ?? 0) as int; 
     }
+
+    // Sort logs by receipt_number as integers
+    logs.sort((a, b) {
+      final aData = a.data() as Map<String, dynamic>;
+      final bData = b.data() as Map<String, dynamic>;
+
+      final aReceipt = int.tryParse(aData['receipt_number']?.toString() ?? '') ?? 0;
+      final bReceipt = int.tryParse(bData['receipt_number']?.toString() ?? '') ?? 0;
+
+      return aReceipt.compareTo(bReceipt);
+    });
 
     final buffer = StringBuffer();
     buffer.writeln('<html>');
