@@ -27,6 +27,7 @@ void _addReceipt() async {
   String selectedCategory = 'الكفالات';
   String? selectedSubName;
   String? selectedSubId;
+  List<String> selectedMonths = [];  // List to hold selected months
 
   // Fetch subs from the Firestore database
   List<Map<String, dynamic>> subs = [];
@@ -53,7 +54,7 @@ void _addReceipt() async {
             children: [
               DropdownButtonFormField<String>(
                 value: selectedCategory,
-                items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك']
+                  items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك', 'صندوق خارجي']
                     .map((category) => DropdownMenuItem(
                           value: category,
                           child: Text(category),
@@ -124,6 +125,57 @@ void _addReceipt() async {
                 },
                 child: const Text("اختيار تاريخ يدوي"),
               ),
+              // Multi-month selection
+              if (selectedCategory == 'الكفالات')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("اختر الأشهر:", style: TextStyle(fontWeight: FontWeight.bold)),
+                  DropdownButtonFormField<String>(
+                    value: null, // Ensure it's initialized with `null` for multi-selection
+                    items: List.generate(12, (index) {
+                      final month = intl.DateFormat('MMMM', 'ar').format(DateTime(2020, index + 1));
+                      return DropdownMenuItem(
+                        value: month,
+                        child: Text(month),
+                      );
+                    }),
+                    onChanged: (String? selectedMonth) {
+                      if (selectedMonth != null && !selectedMonths.contains(selectedMonth)) {
+                        setState(() {
+                          selectedMonths.add(selectedMonth);
+                        });
+                      }
+                    },
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      hintText: "حدد الأشهر",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                  spacing: 8.0,
+                  children: List.generate(12, (index) {
+                    final month = intl.DateFormat('MMMM', 'ar').format(DateTime(2020, index + 1));
+                    final isSelected = selectedMonths.contains(month);
+                    return FilterChip(
+                      label: Text(month),
+                      selected: isSelected,
+                      onSelected: (bool isSelected) {
+                        setState(() {
+                          if (isSelected) {
+                            selectedMonths.add(month);
+                          } else {
+                            selectedMonths.remove(month);
+                          }
+                        });
+                      },
+                    );
+                  }),
+                ),
+                ],
+              ),
             ],
           ),
         ),
@@ -143,12 +195,18 @@ void _addReceipt() async {
               final notes = noteController.text.trim();
               final now = DateTime.now();
 
-              if (receiptNumber.isEmpty || name == null || amount == null) {
+              
+
+
+              // Conditional validation
+              if (receiptNumber.isEmpty || name == null || amount == null || 
+                  (selectedCategory == 'الكفالات' && selectedMonths.isEmpty)) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("يرجى ملء جميع الحقول المطلوبة.")),
                 );
                 return;
               }
+
 
               try {
                 // Ensure the receipt number doesn't exist
@@ -177,18 +235,22 @@ void _addReceipt() async {
                 }
 
                 // Add the new document to finance_log
-                await FirebaseFirestore.instance.collection('finance_log').add({
-                  "id": nextId,
-                  "receipt_number": receiptNumber,
-                  "name": name,
-                  "phone": phone,
-                  "amount": amount,
-                  "category": selectedCategory,
-                  "date_time": now.toIso8601String(),
-                  "manual_date": manualDate?.toIso8601String() ?? now.toIso8601String(),
-                  "type": "in",
-                  "notes": notes,
-                });
+                // After successfully adding the new document to finance_log
+                  await FirebaseFirestore.instance.collection('finance_log').add({
+                    "id": nextId,
+                    "receipt_number": receiptNumber,
+                    "name": name,
+                    "phone": phone,
+                    "amount": amount,
+                    "category": selectedCategory,
+                    "date_time": now.toIso8601String(),
+                    "manual_date": manualDate?.toIso8601String() ?? now.toIso8601String(),
+                    "type": "in",
+                    "notes": notes,
+                  });
+
+                  // Call to update total amount
+                  await _updateTotalAmount(); // Recalculate total balance
 
                 // Update subs collection if category is الكفالات
                   if (selectedCategory == 'الكفالات' && selectedSubId != null) {
@@ -196,53 +258,41 @@ void _addReceipt() async {
                       final subDocRef = FirebaseFirestore.instance.collection('subs').doc(selectedSubId);
                       final subDocSnapshot = await subDocRef.get();
 
-                      // Extract year and month from manualDate or default to current date
                       final receiptDate = manualDate ?? now;
                       final receiptYear = receiptDate.year.toString();
-                      final receiptMonth = receiptDate.month.toString();
 
-                      // Prepare the update structure
-                      Map<String, dynamic> updateData = {};
+                      for (var month in selectedMonths) {
+                        final monthIndex = intl.DateFormat('MMMM', 'ar').parse(month).month.toString();
 
-                      if (subDocSnapshot.exists) {
-                        // If document exists, fetch the current data
-                        Map<String, dynamic> subData = subDocSnapshot.data() as Map<String, dynamic>;
+                        Map<String, dynamic> updateData = {};
 
-                        // Check if year exists, otherwise initialize it
-                        if (subData[receiptYear] == null) {
-                          subData[receiptYear] = {};
+                        if (subDocSnapshot.exists) {
+                          Map<String, dynamic> subData = subDocSnapshot.data() as Map<String, dynamic>;
+
+                          subData[receiptYear] ??= {};
+                          subData[receiptYear][monthIndex] ??= [];
+
+                          (subData[receiptYear][monthIndex] as List).add({
+                            "receipt_number": receiptNumber,
+                            "amount": amount,
+                          });
+
+                          updateData = {receiptYear: subData[receiptYear]};
+                        } else {
+                          updateData = {
+                            receiptYear: {
+                              monthIndex: [
+                                {
+                                  "receipt_number": receiptNumber,
+                                  "amount": amount,
+                                }
+                              ]
+                            }
+                          };
                         }
 
-                        // Check if month exists, otherwise initialize it
-                        if (subData[receiptYear][receiptMonth] == null) {
-                          subData[receiptYear][receiptMonth] = [];
-                        }
-
-                        // Add the new receipt data to the month array
-                        (subData[receiptYear][receiptMonth] as List).add({
-                          "receipt_number": receiptNumber,
-                          "amount": amount,
-                        });
-
-                        updateData = {
-                          receiptYear: subData[receiptYear],
-                        };
-                      } else {
-                        // If document does not exist, create the structure
-                        updateData = {
-                          receiptYear: {
-                            receiptMonth: [
-                              {
-                                "receipt_number": receiptNumber,
-                                "amount": amount,
-                              }
-                            ]
-                          }
-                        };
+                        await subDocRef.set(updateData, SetOptions(merge: true));
                       }
-
-                      // Update the Firestore document
-                      await subDocRef.set(updateData, SetOptions(merge: true));
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("تم تحديث الكفالة بنجاح")),
@@ -254,7 +304,6 @@ void _addReceipt() async {
                       );
                     }
                   }
-
 
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -625,6 +674,10 @@ Future<void> _updateTotalAmount() async {
               "category": newCategory,
               "notes": noteController.text.trim(),
             });
+
+            // Call to update total amount
+            await _updateTotalAmount(); // Recalculate total balance
+
             // Update category totals
             await _updateTotalAmount(); // Recalculate total amount
             Navigator.pop(context);
@@ -718,7 +771,7 @@ Future<void> _updateTotalAmount() async {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedCategory,
-                      items: ['الكل', 'الكفالات', 'التبرعات', 'الاشتراكات', 'بنك']
+                        items: ['الكل', 'الكفالات', 'التبرعات', 'الاشتراكات', 'بنك', 'صندوق خارجي']
                           .map((category) => DropdownMenuItem(
                                 value: category,
                                 child: Text(category),

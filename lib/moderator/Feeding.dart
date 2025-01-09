@@ -203,7 +203,21 @@ class _FeedingPageState extends State<FeedingPage> {
                 );
               },
             ),
-
+              Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                decoration: const InputDecoration(
+                  labelText: 'بحث باسم الحالة أو رقمها',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
             // Cases list with checkboxes
             Expanded(
               child: _isLoadingCases

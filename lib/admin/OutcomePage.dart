@@ -40,7 +40,7 @@ void _addReceipt() {
             DropdownButtonFormField<String>(
               value: selectedCategory,
               items: [
-                'بنك', 'القبض', 'السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان'
+                'بنك', 'القبض', 'السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان', 'صندوق خارجي'
               ]
                   .map((category) => DropdownMenuItem(
                         value: category,
@@ -637,7 +637,7 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedCategory,
-                         items: ['الكل','بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
+                         items: ['الكل','بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان' ,  'صندوق خارجي']
                           .map((category) => DropdownMenuItem(
                                 value: category,
                                 child: Text(category),

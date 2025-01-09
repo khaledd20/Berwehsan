@@ -424,8 +424,9 @@ Future<void> _updateTotalAmount() async {
           children: [
             DropdownButtonFormField<String>(
               value: selectedCategory,
-              items: ['بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
-                  .map((category) => DropdownMenuItem(
+              items: [
+                'بنك', 'القبض', 'السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان', 'صندوق خارجي'
+              ]                  .map((category) => DropdownMenuItem(
                         value: category,
                         child: Text(category),
                       ))
@@ -629,7 +630,7 @@ Stream<List<QueryDocumentSnapshot>> _getCombinedLogsStream() {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedCategory,
-                         items: ['الكل','بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان']
+                         items: ['الكل','بنك','القبض','السلفه', 'الايجار', 'كهرباء', 'مياة', 'غاز', 'البيان' ,  'صندوق خارجي']
                           .map((category) => DropdownMenuItem(
                                 value: category,
                                 child: Text(category),
