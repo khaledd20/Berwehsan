@@ -90,8 +90,7 @@ Future<void> fetchSubs() async {
                       inputType: TextInputType.phone),
                   buildTextField('الوحدة', 'أدخل الوحدة', 'unite', formData,
                       inputType: TextInputType.number),
-                  buildTextField('رقم التعريف:', 'ادخل رقم التعريف', 'id', formData,
-                      inputType: TextInputType.number),
+                  // Removed the ID field from the edit dialog
                 ],
               ),
             ),
@@ -105,51 +104,25 @@ Future<void> fetchSubs() async {
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   _formKey.currentState!.save();
+
                   try {
-                    final int updatedId = int.tryParse(formData['id'].toString()) ?? 0;
-
-                    // Check if the new ID exists in another document
-                    QuerySnapshot existingIdSnapshot = await FirebaseFirestore.instance
+                    // Update the Firestore document with the new values
+                    await FirebaseFirestore.instance
                         .collection('subs')
-                        .where('id', isEqualTo: updatedId)
-                        .get();
+                        .doc(subData['docId'])
+                        .update({
+                      'name': formData['name'],
+                      'location': formData['location'],
+                      'number': formData['number'],
+                      'unite': formData['unite'],
+                    });
 
-                    if (existingIdSnapshot.docs.isNotEmpty &&
-                        existingIdSnapshot.docs.first.id != subData['docId']) {
-                      // If the ID exists in another document, swap the IDs
-                      final otherSubDoc = existingIdSnapshot.docs.first;
-                      final otherSubData = otherSubDoc.data() as Map<String, dynamic>;
-                      final otherSubId = otherSubDoc.id;
-
-                      // Update the other document's ID
-                      await FirebaseFirestore.instance
-                          .collection('subs')
-                          .doc(otherSubId)
-                          .update({'id': subData['id']});
-
-                      // Update the current document's ID
-                      await FirebaseFirestore.instance
-                          .collection('subs')
-                          .doc(subData['docId'])
-                          .update({'id': updatedId});
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم تبديل أرقام التعريف بنجاح.')),
-                      );
-                    } else {
-                      // If the ID does not exist in another document, simply update it
-                      await FirebaseFirestore.instance
-                          .collection('subs')
-                          .doc(subData['docId'])
-                          .update({'id': updatedId});
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم تحديث رقم التعريف بنجاح.')),
-                      );
-                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم تحديث الكفالة بنجاح')),
+                    );
 
                     fetchSubs(); // Refresh the list
-                    Navigator.pop(context);
+                    Navigator.pop(context); // Close the dialog
                   } catch (error) {
                     print('Error updating sub: $error');
                     if (mounted) {
@@ -171,31 +144,30 @@ Future<void> fetchSubs() async {
 
 
   Widget buildTextField(
-      String label, String hint, String key, Map<String, dynamic> formData,
-      {TextInputType inputType = TextInputType.text}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        initialValue: formData[key]?.toString(),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: const OutlineInputBorder(),
-        ),
-        keyboardType: inputType,
-        validator: (value) =>
-            value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
-        onSaved: (value) {
-          if (key == 'unite' || key == 'Active') {
-            formData[key] =
-                int.tryParse(value ?? '0') ?? 0; // Convert to integer
-          } else {
-            formData[key] = value; // Keep as string
-          }
-        },
+    String label, String hint, String key, Map<String, dynamic> formData,
+    {TextInputType inputType = TextInputType.text}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: TextFormField(
+      initialValue: formData[key]?.toString(),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: const OutlineInputBorder(),
       ),
-    );
-  }
+      keyboardType: inputType,
+      validator: (value) =>
+          value == null || value.isEmpty ? 'الرجاء إدخال $label' : null,
+      onSaved: (value) {
+        if (key == 'unite') {
+          formData[key] = int.tryParse(value ?? '0') ?? 0; // Convert to integer
+        } else {
+          formData[key] = value; // Keep as string
+        }
+      },
+    ),
+  );
+}
 
   void _viewCases(BuildContext context, int subId) {
     Navigator.push(

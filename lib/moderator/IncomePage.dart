@@ -611,89 +611,300 @@ Future<void> _updateTotalAmount() async {
 
 
 // Function to edit a document
-  void _editReceipt(String docId, Map<String, dynamic> data) {
+  void _editReceipt(String docId, Map<String, dynamic> data) async {
   final receiptController = TextEditingController(text: data['receipt_number']);
   final nameController = TextEditingController(text: data['name']);
   final phoneController = TextEditingController(text: data['phone']);
   final amountController = TextEditingController(text: data['amount'].toString());
   final noteController = TextEditingController(text: data['notes'] ?? '');
+  DateTime? manualDate = DateTime.tryParse(data['manual_date']);
   String selectedCategory = data['category'];
+  String? selectedSubId;
+  String? selectedSubName;
+  List<String> selectedMonths = [];
+
+  // Fetch subs from the Firestore database
+  List<Map<String, dynamic>> subs = [];
+  try {
+    final subsSnapshot = await FirebaseFirestore.instance.collection('subs').get();
+    subs = subsSnapshot.docs
+        .map((doc) => {
+              'id': doc.id,
+              'name': doc.data()['name'] as String,
+            })
+        .toList();
+  } catch (e) {
+    print('Error fetching subs: $e');
+  }
+
+  // Retrieve existing selectedMonths and selectedSubName from Firestore
+  if (selectedCategory == 'الكفالات') {
+    try {
+      final subDocRef = FirebaseFirestore.instance.collection('subs').doc(data['sub_id']);
+      final subDocSnapshot = await subDocRef.get();
+
+      if (subDocSnapshot.exists) {
+        final subData = subDocSnapshot.data() as Map<String, dynamic>;
+        final receiptYear = DateTime.parse(data['manual_date']).year.toString();
+
+        if (subData[receiptYear] != null) {
+          for (var monthIndex in subData[receiptYear].keys) {
+            final month = intl.DateFormat('MMMM', 'ar').format(DateTime(2020, int.parse(monthIndex)));
+            selectedMonths.add(month);
+          }
+        }
+
+        selectedSubId = data['sub_id'];
+        selectedSubName = subData['name'];
+      }
+    } catch (e) {
+      print('Error retrieving sub data: $e');
+    }
+  }
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("تعديل الإيصال"),
-      content: SingleChildScrollView(
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              value: selectedCategory,
-              items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك']
-                  .map((category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      ))
-                  .toList(),
-              onChanged: (value) => selectedCategory = value!,
-              decoration: const InputDecoration(labelText: "الفئة"),
-            ),
-            TextField(controller: receiptController, decoration: const InputDecoration(labelText: "رقم الإيصال")),
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: "اسم المصدر")),
-            TextField(controller: phoneController, decoration: const InputDecoration(labelText: "رقم الهاتف")),
-            TextField(controller: amountController, decoration: const InputDecoration(labelText: "المبلغ"), keyboardType: TextInputType.number),
-            TextField(controller: noteController, decoration: const InputDecoration(labelText: "الملاحظات")),
-          ],
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text("تعديل الإيصال"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                items: ['الكفالات', 'التبرعات', 'الاشتراكات', 'بنك', 'صندوق خارجي']
+                    .map((category) => DropdownMenuItem(
+                          value: category,
+                          child: Text(category),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value!;
+                    selectedSubName = null; // Reset sub-name if category changes
+                  });
+                },
+                decoration: const InputDecoration(labelText: "الفئة"),
+              ),
+              TextField(
+                controller: receiptController,
+                decoration: const InputDecoration(labelText: "رقم الإيصال"),
+              ),
+              if (selectedCategory == 'الكفالات')
+                buildSingleSelectDropdown(
+                  'اختر اسم الكفالة',
+                  subs,
+                  selectedSubId,
+                  (value) {
+                    setState(() {
+                      selectedSubId = value;
+                      selectedSubName = subs.firstWhere((sub) => sub['id'] == value)['name'];
+                    });
+                  },
+                )
+              else
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: "اسم المصدر"),
+                ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: "رقم الهاتف"),
+                keyboardType: TextInputType.phone,
+              ),
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(labelText: "المبلغ"),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(labelText: "الملاحظات"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: manualDate ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (pickedDate != null) {
+                    setState(() {
+                      manualDate = pickedDate;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('تم اختيار التاريخ: ${intl.DateFormat.yMMMd().format(pickedDate)}'),
+                      ),
+                    );
+                  }
+                },
+                child: const Text("اختيار تاريخ يدوي"),
+              ),
+              // Multi-month selection
+              if (selectedCategory == 'الكفالات')
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("اختر الأشهر:", style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButtonFormField<String>(
+                      value: null, // Ensure it's initialized with `null` for multi-selection
+                      items: List.generate(12, (index) {
+                        final month = intl.DateFormat('MMMM', 'ar').format(DateTime(2020, index + 1));
+                        return DropdownMenuItem(
+                          value: month,
+                          child: Text(month),
+                        );
+                      }),
+                      onChanged: (String? selectedMonth) {
+                        if (selectedMonth != null && !selectedMonths.contains(selectedMonth)) {
+                          setState(() {
+                            selectedMonths.add(selectedMonth);
+                          });
+                        }
+                      },
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        hintText: "حدد الأشهر",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8.0,
+                      children: List.generate(12, (index) {
+                        final month = intl.DateFormat('MMMM', 'ar').format(DateTime(2020, index + 1));
+                        final isSelected = selectedMonths.contains(month);
+                        return FilterChip(
+                          label: Text(month),
+                          selected: isSelected,
+                          onSelected: (bool isSelected) {
+                            setState(() {
+                              if (isSelected) {
+                                selectedMonths.add(month);
+                              } else {
+                                selectedMonths.remove(month);
+                              }
+                            });
+                          },
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("إلغاء"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final receiptNumber = receiptController.text.trim();
+              final name = selectedCategory == 'الكفالات'
+                  ? selectedSubName
+                  : nameController.text.trim();
+              final phone = phoneController.text.trim();
+              final amount = int.tryParse(amountController.text.trim());
+              final notes = noteController.text.trim();
+              final now = DateTime.now();
+
+              // Conditional validation
+              if (receiptNumber.isEmpty || name == null || amount == null ||
+                  (selectedCategory == 'الكفالات' && selectedMonths.isEmpty)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("يرجى ملء جميع الحقول المطلوبة.")),
+                );
+                return;
+              }
+
+              try {
+                // Update the receipt in Firestore
+                await FirebaseFirestore.instance.collection('finance_log').doc(docId).update({
+                  "receipt_number": receiptNumber,
+                  "name": name,
+                  "phone": phone,
+                  "amount": amount,
+                  "category": selectedCategory,
+                  "manual_date": manualDate?.toIso8601String() ?? now.toIso8601String(),
+                  "notes": notes,
+                });
+
+                // Recalculate totals
+                await _updateTotalAmount();
+
+                // Update subs collection if category is الكفالات
+                if (selectedCategory == 'الكفالات' && selectedSubId != null) {
+                  try {
+                    final subDocRef = FirebaseFirestore.instance.collection('subs').doc(selectedSubId);
+                    final subDocSnapshot = await subDocRef.get();
+
+                    final receiptDate = manualDate ?? now;
+                    final receiptYear = receiptDate.year.toString();
+
+                    // Get the existing months from Firestore
+                    final existingMonths = subDocSnapshot.exists
+                        ? (subDocSnapshot.data() as Map<String, dynamic>)[receiptYear]?.keys.toList() ?? []
+                        : [];
+
+                    // Add new months
+                    for (var month in selectedMonths) {
+                      final monthIndex = intl.DateFormat('MMMM', 'ar').parse(month).month.toString();
+
+                      if (!existingMonths.contains(monthIndex)) {
+                        await subDocRef.set({
+                          receiptYear: {
+                            monthIndex: [
+                              {
+                                "receipt_number": receiptNumber,
+                                "amount": amount,
+                              }
+                            ]
+                          }
+                        }, SetOptions(merge: true));
+                      }
+                    }
+
+                    // Remove deleted months
+                    for (var monthIndex in existingMonths) {
+                      final month = intl.DateFormat('MMMM', 'ar').format(DateTime(2020, int.parse(monthIndex)));
+                      if (!selectedMonths.contains(month)) {
+                        await subDocRef.update({
+                          "$receiptYear.$monthIndex": FieldValue.delete(),
+                        });
+                      }
+                    }
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("تم تحديث الكفالة بنجاح")),
+                    );
+                  } catch (e) {
+                    print("Error updating subs collection: $e");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("حدث خطأ أثناء تحديث الكفالة: $e")),
+                    );
+                  }
+                }
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم تحديث الإيصال بنجاح!')),
+                );
+              } catch (e) {
+                print("Error updating receipt: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("حدث خطأ أثناء التحديث: $e")),
+                );
+              }
+            },
+            child: const Text("حفظ"),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("إلغاء")),
-        ElevatedButton(
-          onPressed: () async {
-            final newAmount = int.tryParse(amountController.text) ?? 0;
-            final newCategory = selectedCategory;
-
-            // Subtract the old amount from the old category
-            final oldCategoryRef = FirebaseFirestore.instance.collection('finance').doc(data['category']);
-            final oldCategoryDoc = await oldCategoryRef.get();
-            if (oldCategoryDoc.exists) {
-              final oldAmount = oldCategoryDoc['amount'] ?? 0;
-              await oldCategoryRef.update({"amount": oldAmount - data['amount']});
-            }
-
-            // Add the new amount to the new category
-            final newCategoryRef = FirebaseFirestore.instance.collection('finance').doc(newCategory);
-            final newCategoryDoc = await newCategoryRef.get();
-            if (newCategoryDoc.exists) {
-              final currentAmount = newCategoryDoc['amount'] ?? 0;
-              await newCategoryRef.update({"amount": currentAmount + newAmount});
-            } else {
-              // Create a new document for the new category
-              await newCategoryRef.set({
-                "name": newCategory,
-                "amount": newAmount,
-                "updated_at": DateTime.now().toIso8601String(),
-              });
-            }
-
-            // Update the receipt in 'finance_log'
-            await FirebaseFirestore.instance.collection('finance_log').doc(docId).update({
-              "receipt_number": receiptController.text.trim(),
-              "name": nameController.text.trim(),
-              "phone": phoneController.text.trim(),
-              "amount": newAmount,
-              "category": newCategory,
-              "notes": noteController.text.trim(),
-            });
-            // Update category totals
-            await _updateTotalAmount(); // Recalculate total amount
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم تحديث الإيصال بنجاح!')),
-            );
-          },
-          child: const Text("حفظ"),
-        ),
-      ],
     ),
   );
 }

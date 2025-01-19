@@ -1,13 +1,11 @@
 import 'dart:convert'; // For JSON encoding/decoding
-import 'dart:typed_data'; // For Uint8List
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle; // To access assets
 import 'package:berwehsan/widgets/admin_drawer.dart'; // Import AdminDrawer
 
 class RestoreManager {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  final FirebaseStorage storage = FirebaseStorage.instance;
 
   // List of Firestore collections to restore
   final List<String> collectionNames = [
@@ -27,110 +25,72 @@ class RestoreManager {
     'subs'
   ];
 
+  // List backup dates from assets (manual list or dynamic if feasible)
   Future<List<String>> fetchBackupDates() async {
-    final List<String> backupDates = [];
-    final backupRef = storage.ref('backups/');
-    final ListResult result = await backupRef.listAll();
-
-    for (var item in result.items) {
-      // Extract the timestamp from the file name
-      final String fileName = item.name;
-      final String rawTimestamp = fileName.split('-backup.json').first;
-
-      // Validate and add to the list
-      final DateTime? backupDate = DateTime.tryParse(rawTimestamp);
-      if (backupDate != null) {
-        backupDates.add(rawTimestamp); // Add full timestamp
-      } else {
-        print("Invalid date format in file name: $fileName");
-      }
-    }
-
-    return backupDates;
+    // Manually define backup filenames or list them dynamically
+    return [
+      "2025-01-15T09_54_46.392"
+      // Add additional backup files here if needed
+    ];
   }
 
-  Future<void> restoreBackup(String selectedDate) async {
+  Future<void> restoreBackupFromAssets(String selectedDate) async {
     try {
-      final ref = storage.ref('backups/$selectedDate-backup.json');
-
-      // Get the data as Uint8List
-      final Uint8List? data = await ref.getData(1024 * 1024 * 10);
-
-      if (data == null) {
-        print("No backup data found.");
-        return;
-      }
-
-      // Decode the Uint8List into a String
-      final String jsonData = utf8.decode(data);
+      // Load the JSON backup file from assets
+      final String filePath = 'backups/$selectedDate-backup.json';
+      final String jsonData = await rootBundle.loadString(filePath);
 
       // Parse the JSON data
       final Map<String, dynamic> backupData = jsonDecode(jsonData);
 
-      // Clear Firestore collections
-      for (var collectionName in collectionNames) {
-        final collection = firestore.collection(collectionName);
-        final querySnapshot = await collection.get();
-        for (var doc in querySnapshot.docs) {
-          await collection.doc(doc.id).delete();
+      // Restore Firestore collections
+      for (String collectionName in backupData.keys) {
+        final List<dynamic> documents = backupData[collectionName] ?? [];
+
+        for (var doc in documents) {
+          final String docId = doc['id'];
+          final Map<String, dynamic> newData = doc['data'];
+
+          final DocumentSnapshot existingDoc =
+              await firestore.collection(collectionName).doc(docId).get();
+
+          if (existingDoc.exists) {
+            // Update only if data is different
+            final Map<String, dynamic>? existingData =
+                existingDoc.data() as Map<String, dynamic>?;
+            if (existingData != null && !mapsAreEqual(existingData, newData)) {
+              await firestore.collection(collectionName).doc(docId).set(newData);
+              print("Updated document in $collectionName: $docId");
+            } else {
+              print("Document in $collectionName: $docId is already up to date.");
+            }
+          } else {
+            // Add new document
+            await firestore.collection(collectionName).doc(docId).set(newData);
+            print("Added new document to $collectionName: $docId");
+          }
         }
       }
 
-      // Restore data
-      backupData.forEach((collectionName, documents) async {
-        for (var doc in documents) {
-          await firestore
-              .collection(collectionName)
-              .doc(doc['id'])
-              .set(doc['data']);
-        }
-      });
-
-      print("Database restored successfully.");
+      print("Database restored successfully from $selectedDate.");
     } catch (e) {
       print("Error during restoration: $e");
     }
   }
 
-  Future<void> startImmediateBackup() async {
-    try {
-      final Map<String, dynamic> backupData = {};
-
-      for (String collectionName in collectionNames) {
-        try {
-          final collectionSnapshot = await firestore.collection(collectionName).get();
-
-          if (collectionSnapshot.docs.isNotEmpty) {
-            backupData[collectionName] = collectionSnapshot.docs.map((doc) {
-              return {'id': doc.id, 'data': doc.data()};
-            }).toList();
-            print("Fetched collection: $collectionName with ${collectionSnapshot.docs.length} documents.");
-          } else {
-            print("Collection $collectionName is empty.");
-          }
-        } catch (e) {
-          print("Error fetching collection $collectionName: $e");
-        }
+  // Helper function to compare two maps
+  bool mapsAreEqual(Map<String, dynamic> map1, Map<String, dynamic> map2) {
+    if (map1.length != map2.length) return false;
+    for (String key in map1.keys) {
+      if (map1[key] != map2[key]) {
+        return false;
       }
-
-      // Convert data to JSON
-      final String jsonData = jsonEncode(backupData);
-
-      // Generate a sanitized file name for the backup
-      final String backupFileName = '${DateTime.now().toIso8601String()}-backup.json';
-
-      // Upload the JSON file to Firebase Storage
-      final ref = storage.ref('backups/$backupFileName');
-      await ref.putString(jsonData);
-
-      print("Backup created successfully: $backupFileName");
-    } catch (e) {
-      print("Error during immediate backup: $e");
     }
+    return true;
   }
 }
 
-// Add the missing RestoreBackupScreen class
+// Add the RestoreBackupScreen class
 class RestoreBackupScreen extends StatefulWidget {
   @override
   _RestoreBackupScreenState createState() => _RestoreBackupScreenState();
@@ -145,10 +105,10 @@ class _RestoreBackupScreenState extends State<RestoreBackupScreen> {
   @override
   void initState() {
     super.initState();
-    checkRecentBackup();
+    fetchBackupDates();
   }
 
-  void checkRecentBackup() async {
+  void fetchBackupDates() async {
     setState(() {
       isLoading = true;
     });
@@ -161,51 +121,30 @@ class _RestoreBackupScreenState extends State<RestoreBackupScreen> {
   }
 
   void restoreSelectedBackup() async {
-    if (selectedDate == null) return;
+  if (selectedDate == null) return;
 
-    setState(() {
-      isLoading = true;
-    });
+  setState(() {
+    isLoading = true;
+  });
 
-    try {
-      await restoreManager.restoreBackup(selectedDate!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Backup restored successfully!"))
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error during restoration: $e"))
-      );
-    }
-
-    setState(() {
-      isLoading = false;
-    });
+  try {
+    await restoreManager.restoreBackupFromAssets(selectedDate!);
+    if (!mounted) return; // Ensure widget is still mounted
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Backup restored successfully!")),
+    );
+  } catch (e) {
+    if (!mounted) return; // Ensure widget is still mounted
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error during restoration: $e")),
+    );
   }
 
-  void startBackupWithoutCheck() async {
-    setState(() {
-      isLoading = true;
-    });
+  setState(() {
+    isLoading = false;
+  });
+}
 
-    try {
-      await restoreManager.startImmediateBackup();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Backup created successfully without check!"))
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error during immediate backup: $e"))
-      );
-    }
-
-    setState(() {
-      isLoading = false;
-    });
-
-    // Refresh backup dates after creating a new backup
-    checkRecentBackup();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -239,11 +178,6 @@ class _RestoreBackupScreenState extends State<RestoreBackupScreen> {
                   ElevatedButton(
                     onPressed: selectedDate != null ? restoreSelectedBackup : null,
                     child: const Text("Restore Backup"),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: startBackupWithoutCheck,
-                    child: const Text("Start Backup Without Check"),
                   ),
                 ],
               ),
