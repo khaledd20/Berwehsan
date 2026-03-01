@@ -1,4 +1,5 @@
 import 'package:berwehsan/admin/insertSub.dart';
+import 'package:berwehsan/admin/sub-case.dart';
 import 'package:berwehsan/widgets/admin_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -432,6 +433,23 @@ Future<void> printYearlyReport(BuildContext context, String docId, String year, 
                               style: TextStyle(color: Colors.green),
                             ),
                           ),
+                          TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LinkCasesToSubPage(
+                                  subId: sub['id'],
+                                  subName: sub['name'],
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'ربط/فصل الحالات',
+                            style: TextStyle(color: Colors.purple),
+                          ),
+                        ),
                           TextButton(
                             onPressed: () => showYearSelectionDialog(
                                 context, sub['name'], sub['docId']),

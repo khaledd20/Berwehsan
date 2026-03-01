@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html; // For printing
 import 'caseProfile.dart';
+import 'edit_full _case.dart';
 import 'insertCase.dart';
 
 class CasesPage extends StatefulWidget {
@@ -103,13 +104,14 @@ class _CasesPageState extends State<CasesPage> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          icon: const Icon(Icons.edit, color: Color.fromARGB(255, 0, 255, 204)),
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => EditCase(caseId: docId),
+                                builder: (context) => EditFullCase(docId: docId),
                               ),
                             );
                           },

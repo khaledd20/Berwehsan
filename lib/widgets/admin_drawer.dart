@@ -1,7 +1,9 @@
+import 'package:berwehsan/admin/BackupManager.dart';
 import 'package:berwehsan/admin/CashHistory.dart';
 import 'package:berwehsan/admin/Feeding.dart';
 import 'package:berwehsan/admin/IncomePage.dart';
 import 'package:berwehsan/admin/Itinerary.dart';
+import 'package:berwehsan/admin/ManualBackupPage.dart';
 import 'package:berwehsan/admin/OutcomePage.dart';
 import 'package:berwehsan/admin/RestoreManager.dart';
 import 'package:berwehsan/admin/SearchingPage.dart';
@@ -12,6 +14,7 @@ import 'package:berwehsan/admin/feedingHistory.dart';
 import 'package:berwehsan/admin/items/historyItem.dart';
 import 'package:berwehsan/admin/sub.dart';
 import 'package:flutter/material.dart';
+import '../admin/feeding_change.dart';
 import '../admin/items/viewItems.dart';
 import '../admin/cases.dart';
 import '../login.dart';
@@ -48,6 +51,16 @@ class AdminDrawer extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.store),
               title: const Text('عمل نسخة احتياطية'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                MaterialPageRoute(builder: (context) => const ManualBackupPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.store),
+              title: const Text('استعادة نسخة احتياطية'),
               onTap: () {
                 Navigator.pushReplacement(
                   context,
@@ -152,6 +165,16 @@ class AdminDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => FeedingHistoryPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.store),
+              title: const Text('تغيير الإطعام'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => FeedingChangePage()),
                 );
               },
             ),
