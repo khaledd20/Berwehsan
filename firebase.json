@@ -13,6 +13,7 @@
     }
   ],
   "hosting": {
+    "target": "main-site",
     "public": "build/web",
     "ignore": [
       "firebase.json",

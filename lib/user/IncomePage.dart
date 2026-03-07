@@ -209,19 +209,6 @@ void _addReceipt() async {
 
 
               try {
-                // Ensure the receipt number doesn't exist
-                final existingReceipt = await FirebaseFirestore.instance
-                    .collection('finance_log')
-                    .where('receipt_number', isEqualTo: receiptNumber)
-                    .get();
-
-                if (existingReceipt.docs.isNotEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("رقم الإيصال موجود بالفعل. يرجى إدخال رقم آخر.")),
-                  );
-                  return;
-                }
-
                 // Fetch next id safely
                 final snapshot = await FirebaseFirestore.instance
                     .collection('finance_log')
@@ -413,17 +400,16 @@ Widget buildSingleSelectDropdown(
       balance = (financeDoc.data()?['balance'] ?? 0) as int; 
     }
 
-    // Sort logs by receipt_number
-    // Sort logs by receipt_number as integers
+    // Sort logs by manual_date
     logs.sort((a, b) {
       final aData = a.data() as Map<String, dynamic>;
       final bData = b.data() as Map<String, dynamic>;
 
-      // Extract receipt_number
-      final aReceipt = int.tryParse(aData['receipt_number']?.toString() ?? '') ?? 0;
-      final bReceipt = int.tryParse(bData['receipt_number']?.toString() ?? '') ?? 0;
+      // Extract manual_date
+      final aDate = DateTime.parse(aData['manual_date']?.toString() ?? '');
+      final bDate = DateTime.parse(bData['manual_date']?.toString() ?? '');
 
-      return aReceipt.compareTo(bReceipt);
+      return aDate.compareTo(bDate);
     });
 
 
@@ -727,9 +713,12 @@ Future<void> _updateTotalAmount() async {
                 stream: FirebaseFirestore.instance
                   .collection('finance_log')
                   .where('type', isEqualTo: 'in')
-                  .orderBy('id')
+                  .orderBy('manual_date')
                   .snapshots(),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }

@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "berwehsan-78e0d"
-  }
+  },
+  "targets": {
+    "berwehsan-78e0d": {
+      "hosting": {
+        "main-site": [
+          "berwehsan-78e0d"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
