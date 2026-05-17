@@ -1,10 +1,8 @@
-import 'package:berwehsan/admin/RestoreManager.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:intl/date_symbol_data_local.dart'; // For locale initialization
 import 'package:berwehsan/login.dart'; // Ensure this path is correct
-import 'package:berwehsan/admin/BackupManager.dart'; // Import the BackupManager
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,24 +20,9 @@ void main() async {
       measurementId: "G-062S5X7BKD",
     ),
   );
-  // Perform the backup
-  await performInitialBackup();
 
   runApp(const MyApp());
 }
-
-Future<void> performInitialBackup() async {
-  final backupManager = BackupManager();
-  try {
-    print("Starting backup process...");
-    await backupManager.performBackup();
-    print("Backup process completed.");
-  } catch (e) {
-    print("Error during backup: $e");
-  }
-}
-
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -49,7 +32,34 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Berwehsan Web App',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+        primaryColor: const Color(0xFF1B5E37),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1B5E37),
+          primary: const Color(0xFF1B5E37),
+          secondary: const Color(0xFF2E7D32),
+          surface: const Color(0xFFFFFFFF),
+          tertiary: const Color(0xFFB87333),
+          onPrimary: const Color(0xFFFFFFFF),
+          onSecondary: const Color(0xFFFFFFFF),
+        ).copyWith(
+          primaryContainer: const Color(0xFF0A2B1D),
+          onPrimaryContainer: const Color(0xFFFFFFFF),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1B5E37),
+          foregroundColor: Color(0xFFFFFFFF),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1B5E37),
+            foregroundColor: const Color(0xFFFFFFFF),
+          ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFFB87333),
+          foregroundColor: Color(0xFFFFFFFF),
+        ),
       ),
       builder: EasyLoading.init(),
       home: const LoginScreenWeb(),

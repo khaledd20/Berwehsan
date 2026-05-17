@@ -1,6 +1,6 @@
-import 'package:berwehsan/admin/insertSub.dart';
-import 'package:berwehsan/admin/sub-case.dart';
-import 'package:berwehsan/widgets/admin_drawer.dart';
+import 'package:berwehsan/screens/insertSub.dart';
+import 'package:berwehsan/screens/sub-case.dart';
+import 'package:berwehsan/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html;
@@ -351,7 +351,7 @@ Future<void> printYearlyReport(BuildContext context, String docId, String year, 
             ),
           ],
         ),
-        drawer: AdminDrawer(), // AdminDrawer added here
+        drawer: const AppDrawer(), // Updated to AppDrawer
         body: Column(
           children: [
             Padding(
