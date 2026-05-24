@@ -86,7 +86,8 @@ class AdminChestsPage extends StatelessWidget {
                                     style: TextStyle(color: Colors.red),
                                   ),
                                 ),
-                              if (UserSession().isModerator)
+                              if (UserSession().isModerator ||
+                                  UserSession().isAccountingModerator)
                                 TextButton(
                                   onPressed: () =>
                                       _editChest(context, docId, chest),
@@ -353,8 +354,8 @@ class ChestPrinter {
 
     buffer.writeln(PrintStyle.getHeader('بيانات الصناديق'));
     buffer.writeln('<table>');
-    buffer.writeln(
-        '<tr><th>اسم الصندوق</th><th>الرصيد</th><th>المعرف</th></tr>');
+    buffer
+        .writeln('<tr><th>اسم الصندوق</th><th>الرصيد</th><th>المعرف</th></tr>');
 
     try {
       final querySnapshot = await chestsCollection.get();
@@ -626,8 +627,7 @@ class ItemDetailsChest extends StatelessWidget {
                     child: Text(
                       selectedDate == null
                           ? 'اختر تاريخ الإيصال'
-                          : intl.DateFormat('yyyy-MM-dd')
-                              .format(selectedDate!),
+                          : intl.DateFormat('yyyy-MM-dd').format(selectedDate!),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -679,7 +679,10 @@ class ItemDetailsChest extends StatelessWidget {
                         }
                         final entities = snapshot.data!.docs.map((doc) {
                           final data = doc.data() as Map<String, dynamic>;
-                          return {'id': data['id']?.toString(), 'name': data['name']};
+                          return {
+                            'id': data['id']?.toString(),
+                            'name': data['name']
+                          };
                         }).toList();
 
                         return Column(
@@ -688,7 +691,8 @@ class ItemDetailsChest extends StatelessWidget {
                             DropdownButton<String>(
                               isExpanded: true,
                               value: selectedEntityId,
-                              hint: Text(isAdd ? 'اختر المتبرع' : 'اختر الحالة'),
+                              hint:
+                                  Text(isAdd ? 'اختر المتبرع' : 'اختر الحالة'),
                               items: entities.map((e) {
                                 return DropdownMenuItem<String>(
                                   value: e['id'],
@@ -699,7 +703,8 @@ class ItemDetailsChest extends StatelessWidget {
                                 setState(() {
                                   selectedEntityId = value;
                                   selectedEntityName = entities.firstWhere(
-                                      (element) => element['id'] == value)['name'];
+                                      (element) =>
+                                          element['id'] == value)['name'];
                                 });
                               },
                             ),

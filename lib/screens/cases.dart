@@ -30,7 +30,8 @@ class _CasesPageState extends State<CasesPage> {
     if (text.isEmpty) return '';
     return text
         .toLowerCase()
-        .replaceAll(RegExp(r'[\u064B-\u0652\u0640]'), '') // Remove Tashkeel & Tatweel
+        .replaceAll(
+            RegExp(r'[\u064B-\u0652\u0640]'), '') // Remove Tashkeel & Tatweel
         .replaceAll(RegExp(r'[أإآ]'), 'ا')
         .replaceAll(RegExp(r'ة'), 'ه')
         .replaceAll(RegExp(r'ى'), 'ي')
@@ -56,7 +57,8 @@ class _CasesPageState extends State<CasesPage> {
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(280.0),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
@@ -68,7 +70,8 @@ class _CasesPageState extends State<CasesPage> {
                     children: [
                       // Row 1: Main Search
                       TextField(
-                        onChanged: (value) => setState(() => searchQuery = value),
+                        onChanged: (value) =>
+                            setState(() => searchQuery = value),
                         decoration: InputDecoration(
                           hintText: 'ابحث بالاسم أو الرقم',
                           prefixIcon: const Icon(Icons.search),
@@ -146,8 +149,8 @@ class _CasesPageState extends State<CasesPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
-                              onChanged: (value) =>
-                                  setState(() => socialStatusSearchQuery = value),
+                              onChanged: (value) => setState(
+                                  () => socialStatusSearchQuery = value),
                               decoration: InputDecoration(
                                 hintText: 'الحالة الاجتماعية',
                                 prefixIcon: const Icon(Icons.family_restroom),
@@ -170,7 +173,8 @@ class _CasesPageState extends State<CasesPage> {
                         children: [
                           const Text('ترتيب حسب:',
                               style: TextStyle(
-                                  fontWeight: FontWeight.bold, color: Colors.white)),
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
                           ToggleButtons(
                             isSelected: [!_sortByDate, _sortByDate],
                             onPressed: (index) =>
@@ -178,7 +182,8 @@ class _CasesPageState extends State<CasesPage> {
                             borderRadius: BorderRadius.circular(10),
                             selectedColor: Colors.white,
                             fillColor: Theme.of(context).primaryColor,
-                            color: Colors.black54, // Changed from white70 for visibility
+                            color: Colors
+                                .black54, // Changed from white70 for visibility
                             constraints: const BoxConstraints(
                               minHeight: 32,
                               minWidth: 80,
@@ -219,13 +224,14 @@ class _CasesPageState extends State<CasesPage> {
 
             var filteredCases = cases.where((doc) {
               final caseData = doc.data() as Map<String, dynamic>;
-              
+
               // Apply Main Search (Name/ID)
               if (searchQuery.isNotEmpty) {
-                final name = _normalizeArabic(caseData['name']?.toString() ?? '');
+                final name =
+                    _normalizeArabic(caseData['name']?.toString() ?? '');
                 final id = caseData['id']?.toString() ?? '';
                 final normalizedQuery = _normalizeArabic(searchQuery);
-                
+
                 if (RegExp(r'^\d+$').hasMatch(searchQuery)) {
                   if (id != searchQuery) return false;
                 } else {
@@ -240,7 +246,8 @@ class _CasesPageState extends State<CasesPage> {
 
               // Apply Mother Search
               if (motherSearchQuery.isNotEmpty) {
-                final motherName = _normalizeArabic(caseData['mother_name']?.toString() ?? '');
+                final motherName =
+                    _normalizeArabic(caseData['mother_name']?.toString() ?? '');
                 final normalizedQuery = _normalizeArabic(motherSearchQuery);
                 if (normalizedQuery.length == 1) {
                   if (!motherName.startsWith(normalizedQuery)) return false;
@@ -251,7 +258,8 @@ class _CasesPageState extends State<CasesPage> {
 
               // Apply Grade Search
               if (gradeSearchQuery.isNotEmpty) {
-                final grade = _normalizeArabic(caseData['grade_id']?.toString() ?? '');
+                final grade =
+                    _normalizeArabic(caseData['grade_id']?.toString() ?? '');
                 final normalizedQuery = _normalizeArabic(gradeSearchQuery);
                 if (normalizedQuery.length == 1) {
                   if (!grade.startsWith(normalizedQuery)) return false;
@@ -262,7 +270,8 @@ class _CasesPageState extends State<CasesPage> {
 
               // Apply Size Search
               if (sizeSearchQuery.isNotEmpty) {
-                final size = _normalizeArabic(caseData['c_size']?.toString() ?? '');
+                final size =
+                    _normalizeArabic(caseData['c_size']?.toString() ?? '');
                 final normalizedQuery = _normalizeArabic(sizeSearchQuery);
                 if (normalizedQuery.length == 1) {
                   if (!size.startsWith(normalizedQuery)) return false;
@@ -273,8 +282,10 @@ class _CasesPageState extends State<CasesPage> {
 
               // Apply Social Status Search
               if (socialStatusSearchQuery.isNotEmpty) {
-                final status = _normalizeArabic(caseData['social_status']?.toString() ?? '');
-                final normalizedQuery = _normalizeArabic(socialStatusSearchQuery);
+                final status = _normalizeArabic(
+                    caseData['social_status']?.toString() ?? '');
+                final normalizedQuery =
+                    _normalizeArabic(socialStatusSearchQuery);
                 if (normalizedQuery.length == 1) {
                   if (!status.startsWith(normalizedQuery)) return false;
                 } else {
@@ -328,24 +339,28 @@ class _CasesPageState extends State<CasesPage> {
                       children: [
                         Text('رقم الحالة: ${caseData['id'] ?? 'غير معروف'}'),
                         if (caseData['mother_name'] != null)
-                           Text('اسم الأم: ${caseData['mother_name']}'),
+                          Text('اسم الأم: ${caseData['mother_name']}'),
                         if (caseData['grade_id'] != null)
-                           Text('المرحلة: ${caseData['grade_id']}'),
+                          Text('المرحلة: ${caseData['grade_id']}'),
                         if (caseData['c_size'] != null)
-                           Text('المقاس: ${caseData['c_size']}'),
+                          Text('المقاس: ${caseData['c_size']}'),
                         if (caseData['social_status'] != null)
-                           Text('الحالة الاجتماعية: ${caseData['social_status']}'),
+                          Text(
+                              'الحالة الاجتماعية: ${caseData['social_status']}'),
                         Text(
                             'رقم التليفون: ${caseData['number'] ?? 'غير معروف'}'),
-                        if (UserSession().isAdmin && caseData.containsKey('userName'))
-                          Text('بواسطة: ${caseData['userName']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        if (UserSession().isAdmin &&
+                            caseData.containsKey('userName'))
+                          Text('بواسطة: ${caseData['userName']}',
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Edit for Admin and Moderator, Delete only for Admin
-                        if (UserSession().isAdmin || UserSession().isModerator)
+                        if (UserSession().canEditOrDelete)
                           IconButton(
                             icon: const Icon(Icons.edit,
                                 color: Color.fromARGB(255, 0, 255, 204)),
@@ -391,7 +406,9 @@ class _CasesPageState extends State<CasesPage> {
         // Add Case for Admin (3) and Moderator (2)
         floatingActionButton: UserSession().isAdmin ||
                 UserSession().isModerator ||
-                UserSession().isAccounting
+                UserSession().isAccounting ||
+                UserSession().isAccountingModerator ||
+                UserSession().isSecretaryModerator
             ? FloatingActionButton(
                 backgroundColor: Colors.green,
                 tooltip: 'إضافة حالة جديدة',
@@ -419,7 +436,8 @@ class _CasesPageState extends State<CasesPage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             title: const Text('حذف الحالة'),
-            content: const Text('هل أنت متأكد من حذف هذه الحالة؟ سيتم حذف جميع سجلاتها المالية المرتبطة أيضاً.'),
+            content: const Text(
+                'هل أنت متأكد من حذف هذه الحالة؟ سيتم حذف جميع سجلاتها المالية المرتبطة أيضاً.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -429,19 +447,23 @@ class _CasesPageState extends State<CasesPage> {
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () async {
                   try {
-                    final caseDoc = await FirebaseFirestore.instance.collection('cases').doc(docId).get();
+                    final caseDoc = await FirebaseFirestore.instance
+                        .collection('cases')
+                        .doc(docId)
+                        .get();
                     if (!caseDoc.exists) return;
-                    
+
                     final caseData = caseDoc.data()!;
                     final caseId = caseData['id'];
-                    final subIds = List<dynamic>.from(caseData['sub_ids'] ?? []);
+                    final subIds =
+                        List<dynamic>.from(caseData['sub_ids'] ?? []);
 
                     // 1. Delete all finance logs for this case
                     final logsSnapshot = await FirebaseFirestore.instance
                         .collection('finance_log')
                         .where('case_id', isEqualTo: caseId)
                         .get();
-                    
+
                     final batch = FirebaseFirestore.instance.batch();
                     for (var doc in logsSnapshot.docs) {
                       batch.delete(doc.reference);
@@ -456,11 +478,11 @@ class _CasesPageState extends State<CasesPage> {
                           .collection('subs')
                           .where('id', isEqualTo: subId)
                           .get();
-                      
+
                       for (var subDoc in subsSnapshot.docs) {
                         Map<String, dynamic> data = subDoc.data();
                         bool changed = false;
-                        
+
                         // Iterate through years and months to find and remove entries with this caseId
                         data.forEach((key, value) {
                           if (int.tryParse(key) != null && value is Map) {
@@ -468,8 +490,10 @@ class _CasesPageState extends State<CasesPage> {
                             value.forEach((month, receipts) {
                               if (receipts is List) {
                                 int initialLen = receipts.length;
-                                receipts.removeWhere((r) => r is Map && r['case_id'] == caseId);
-                                if (receipts.length != initialLen) changed = true;
+                                receipts.removeWhere(
+                                    (r) => r is Map && r['case_id'] == caseId);
+                                if (receipts.length != initialLen)
+                                  changed = true;
                               }
                             });
                           }
@@ -489,7 +513,8 @@ class _CasesPageState extends State<CasesPage> {
 
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم حذف الحالة وجميع سجلاتها بنجاح')),
+                      const SnackBar(
+                          content: Text('تم حذف الحالة وجميع سجلاتها بنجاح')),
                     );
                   } catch (e) {
                     print('Error deleting case: $e');

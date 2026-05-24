@@ -145,7 +145,7 @@ class _AreasPageState extends State<AreasPage> {
                                         ),
                                       ),
                                     // Edit for Admin and Moderator
-                                    if (UserSession().isAdmin || UserSession().isModerator)
+                                    if (UserSession().canEditOrDelete)
                                       TextButton(
                                         onPressed: () =>
                                             _editArea(context, docId, area),
@@ -249,7 +249,8 @@ class _AreasPageState extends State<AreasPage> {
   /// Function to delete an area
   Future<void> _deleteArea(BuildContext context, String docId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('areas').doc(docId).get();
+      final doc =
+          await FirebaseFirestore.instance.collection('areas').doc(docId).get();
       if (!doc.exists) return;
       final areaId = doc.data()?['id'];
 
@@ -269,7 +270,8 @@ class _AreasPageState extends State<AreasPage> {
 
       await FirebaseFirestore.instance.collection('areas').doc(docId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف المنطقة بنجاح وتحديث الحالات المرتبطة')),
+        const SnackBar(
+            content: Text('تم حذف المنطقة بنجاح وتحديث الحالات المرتبطة')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -413,7 +415,9 @@ class _CasesForAreaPageState extends State<CasesForAreaPage> {
                   var filteredDocs = snapshot.data!.docs.where((doc) {
                     if (_ageFilter.isEmpty) return true;
                     final data = doc.data() as Map<String, dynamic>;
-                    final age = AgeCalculator.calculateAge(data['birth_date']?.toString(), data['age']).toString();
+                    final age = AgeCalculator.calculateAge(
+                            data['birth_date']?.toString(), data['age'])
+                        .toString();
                     return age == _ageFilter;
                   }).toList();
 
@@ -465,7 +469,8 @@ class _CasesForAreaPageState extends State<CasesForAreaPage> {
                                   'العنوان: ${caseData['location'] ?? 'غير معروف'}'),
                               Text(
                                   'الرقم: ${caseData['number'] ?? 'غير معروف'}'),
-                              Text('العمر: ${AgeCalculator.calculateAge(caseData['birth_date']?.toString(), caseData['age'])}'),
+                              Text(
+                                  'العمر: ${AgeCalculator.calculateAge(caseData['birth_date']?.toString(), caseData['age'])}'),
                             ],
                           ),
                         ),
@@ -492,8 +497,8 @@ class _CasesForAreaPageState extends State<CasesForAreaPage> {
     try {
       final buffer = StringBuffer();
       buffer.writeln('<html>');
-buffer.writeln(PrintStyle.htmlHead);
-buffer.writeln('<body>');
+      buffer.writeln(PrintStyle.htmlHead);
+      buffer.writeln('<body>');
 
       buffer.writeln(
           'body { direction: rtl; font-family: Arial, sans-serif; margin: 20px; }');
@@ -505,8 +510,8 @@ buffer.writeln('<body>');
       buffer.writeln('h1 { text-align: center; }');
       buffer.writeln('</style></head><body>');
 
-      buffer.writeln(
-          PrintStyle.getHeader('بيانات الحالات - منطقة ${widget.areaId} ${_ageFilter.isNotEmpty ? "(عمر: $_ageFilter)" : ""}'));
+      buffer.writeln(PrintStyle.getHeader(
+          'بيانات الحالات - منطقة ${widget.areaId} ${_ageFilter.isNotEmpty ? "(عمر: $_ageFilter)" : ""}'));
       buffer.writeln('<table><tr>'
           '<th>رقم الحالة</th>'
           '<th>الاسم</th>'

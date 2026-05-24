@@ -1,11 +1,11 @@
-﻿class UserSession {
+class UserSession {
   // Singleton pattern
   static final UserSession _instance = UserSession._internal();
-  
+
   factory UserSession() {
     return _instance;
   }
-  
+
   UserSession._internal();
 
   // Role IDs
@@ -22,8 +22,11 @@
   bool get isUser => role == 1;
   bool get isSecretary => role == 4;
   bool get isAccounting => role == 5;
+  bool get isAccountingModerator => role == 6;
+  bool get isSecretaryModerator => role == 7;
 
-  bool get canEditOrDelete => isAdmin || isModerator;
+  bool get canEditOrDelete =>
+      isAdmin || isModerator || isAccountingModerator || isSecretaryModerator;
 
   void clear() {
     role = null;

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import '../screens/feeding_change.dart';
 import '../screens/items/viewItems.dart';
 import '../screens/cases.dart';
+import '../screens/sub_id_migration.dart';
 import '../login.dart';
 import '../core/user_session.dart';
 
@@ -49,7 +50,9 @@ class AppDrawer extends StatelessWidget {
                 session.isModerator ||
                 session.isAccounting ||
                 session.isUser ||
-                session.isSecretary) ...[
+                session.isSecretary ||
+                session.isAccountingModerator ||
+                session.isSecretaryModerator) ...[
               ListTile(
                 leading: const Icon(Icons.folder),
                 title: const Text('الحالات'),
@@ -73,7 +76,11 @@ class AppDrawer extends StatelessWidget {
             ],
 
             // Chests - Available to Admin, Moderator, User, Accounting
-            if (session.isAdmin || session.isModerator || session.isUser || session.isAccounting)
+            if (session.isAdmin ||
+                session.isModerator ||
+                session.isUser ||
+                session.isAccounting ||
+                session.isAccountingModerator)
               ListTile(
                 leading: const Icon(Icons.account_balance),
                 title: const Text('الصناديق'),
@@ -86,7 +93,9 @@ class AppDrawer extends StatelessWidget {
               ),
 
             // Feeding - Available to Admin, Secretary
-            if (session.isAdmin || session.isSecretary) ...[
+            if (session.isAdmin ||
+                session.isSecretary ||
+                session.isSecretaryModerator) ...[
               ListTile(
                 leading: const Icon(Icons.restaurant),
                 title: const Text('الاطعام'),
@@ -120,7 +129,10 @@ class AppDrawer extends StatelessWidget {
             ],
 
             // Accounting - Available to Admin, Accounting, Moderator
-            if (session.isAdmin || session.isAccounting || session.isModerator) ...[
+            if (session.isAdmin ||
+                session.isAccounting ||
+                session.isModerator ||
+                session.isAccountingModerator) ...[
               ListTile(
                 leading: const Icon(Icons.arrow_downward),
                 title: const Text('الوارد'),
@@ -168,7 +180,10 @@ class AppDrawer extends StatelessWidget {
             ],
 
             // الكفالة - Available to Admin, Moderator, Accounting (Role 5)
-            if (session.isAdmin || session.isModerator || session.isAccounting)
+            if (session.isAdmin ||
+                session.isModerator ||
+                session.isAccounting ||
+                session.isAccountingModerator)
               ListTile(
                 leading: const Icon(Icons.people),
                 title: const Text('الكفالة'),
@@ -179,7 +194,12 @@ class AppDrawer extends StatelessWidget {
               ),
 
             // المناطق - Available to Admin, Moderator, Secretary (Role 4), Accounting (Role 5)
-            if (session.isAdmin || session.isModerator || session.isSecretary || session.isAccounting)
+            if (session.isAdmin ||
+                session.isModerator ||
+                session.isSecretary ||
+                session.isAccounting ||
+                session.isAccountingModerator ||
+                session.isSecretaryModerator)
               ListTile(
                 leading: const Icon(Icons.location_on),
                 title: const Text('المناطق'),
@@ -192,7 +212,10 @@ class AppDrawer extends StatelessWidget {
               ),
 
             // بحث الحالات - Available to Admin, Moderator, Secretary (Role 4)
-            if (session.isAdmin || session.isModerator || session.isSecretary)
+            if (session.isAdmin ||
+                session.isModerator ||
+                session.isSecretary ||
+                session.isSecretaryModerator)
               ListTile(
                 leading: const Icon(Icons.search),
                 title: const Text('بحث الحالات'),
@@ -261,6 +284,17 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
             ],
+            if (session.isAdmin)
+              ListTile(
+                leading: const Icon(Icons.build),
+                title: const Text('أداة ربط معرفات الكفلاء'),
+                onTap: () {
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SubIdMigrationPage()));
+                },
+              ),
 
             ListTile(
               leading: const Icon(Icons.login),

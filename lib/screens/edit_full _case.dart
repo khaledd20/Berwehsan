@@ -40,8 +40,10 @@ class _EditFullCaseState extends State<EditFullCase> {
         .get();
     setState(() {
       caseData = snapshot.data() ?? {};
-      if (caseData['birth_date'] != null && caseData['birth_date'].toString().isNotEmpty) {
-        _selectedBirthDate = DateTime.tryParse(caseData['birth_date'].toString());
+      if (caseData['birth_date'] != null &&
+          caseData['birth_date'].toString().isNotEmpty) {
+        _selectedBirthDate =
+            DateTime.tryParse(caseData['birth_date'].toString());
       }
       for (var id in List<int>.from(caseData['sub_ids'] ?? [])) {
         selectedSubIds[id] = true;
@@ -88,7 +90,8 @@ class _EditFullCaseState extends State<EditFullCase> {
       caseData['chest_ids'] = cIds;
       caseData['updated_at'] = DateTime.now().toIso8601String();
       caseData['birth_date'] = _selectedBirthDate?.toIso8601String() ?? '';
-      caseData['age'] = AgeCalculator.calculateAge(_selectedBirthDate?.toIso8601String(), caseData['age']);
+      caseData['age'] = AgeCalculator.calculateAge(
+          _selectedBirthDate?.toIso8601String(), caseData['age']);
       caseData['userName'] = UserSession().fullName;
       await FirebaseFirestore.instance
           .collection('cases')
@@ -175,10 +178,13 @@ class _EditFullCaseState extends State<EditFullCase> {
                       ),
                       child: Text(
                         _selectedBirthDate == null
-                            ? (caseData['age'] != null ? 'تاريخ الميلاد غير مسجل (العمر القديم: ${caseData['age']})' : 'اضغط لاختيار تاريخ الميلاد')
+                            ? (caseData['age'] != null
+                                ? 'تاريخ الميلاد غير مسجل (العمر القديم: ${caseData['age']})'
+                                : 'اضغط لاختيار تاريخ الميلاد')
                             : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year} (العمر: ${AgeCalculator.calculateAge(_selectedBirthDate!.toIso8601String(), caseData['age'])})',
                         style: TextStyle(
-                            color: _selectedBirthDate == null && caseData['age'] == null
+                            color: _selectedBirthDate == null &&
+                                    caseData['age'] == null
                                 ? Colors.grey
                                 : Colors.black),
                       ),

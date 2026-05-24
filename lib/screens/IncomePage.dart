@@ -15,6 +15,7 @@ class IncomePage extends StatefulWidget {
 
 class _IncomePageState extends State<IncomePage> {
   String _nameOrReceiptFilter = '';
+  String _notesFilter = '';
   String _selectedCategory = 'الكل';
   DateTime? _startDate;
   DateTime? _endDate;
@@ -41,7 +42,7 @@ class _IncomePageState extends State<IncomePage> {
           await FirebaseFirestore.instance.collection('subs').get();
       subs = subsSnapshot.docs
           .map((doc) => {
-                'id': doc.id,
+                'id': doc.data()['id'].toString(),
                 'name': doc.data()['name'] as String,
               })
           .toList();
@@ -133,7 +134,7 @@ class _IncomePageState extends State<IncomePage> {
                               context: context,
                               initialDate: DateTime.now(),
                               firstDate: DateTime(2020),
-                              lastDate: DateTime.now(),
+                              lastDate: DateTime(2100),
                             );
                             if (pickedDate != null) {
                               setState(() {
@@ -341,48 +342,6 @@ class _IncomePageState extends State<IncomePage> {
                         "selected_periods": selectedPeriods,
                         "userName": UserSession().fullName,
                       });
-
-                      // Update subs collection if category is الكفالات
-                      if (selectedCategory == 'الكفالات' &&
-                          selectedSubId != null) {
-                        try {
-                          final subDocRef = FirebaseFirestore.instance
-                              .collection('subs')
-                              .doc(selectedSubId);
-
-                          final subDocSnapshot = await subDocRef.get();
-                          Map<String, dynamic> subData = subDocSnapshot.exists
-                              ? subDocSnapshot.data() as Map<String, dynamic>
-                              : {};
-
-                          for (var period in selectedPeriods) {
-                            final year = period['year'].toString();
-                            final monthIndex = period['month'].toString();
-
-                            subData[year] ??= {};
-                            subData[year][monthIndex] ??= [];
-
-                            (subData[year][monthIndex] as List).add({
-                              "receipt_number": receiptNumber,
-                              "amount": amount,
-                            });
-                          }
-
-                          await subDocRef.set(subData, SetOptions(merge: true));
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("تم تحديث الكفالة بنجاح")),
-                          );
-                        } catch (e) {
-                          print("Error updating subs collection: $e");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content:
-                                    Text("حدث خطأ أثناء تحديث الكفالة: $e")),
-                          );
-                        }
-                      }
 
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -620,7 +579,6 @@ class _IncomePageState extends State<IncomePage> {
     }
   }
 
-
   Future<void> _printReceipt(Map<String, dynamic> data) async {
     final buffer = StringBuffer();
     buffer.writeln('<html>');
@@ -711,51 +669,9 @@ class _IncomePageState extends State<IncomePage> {
     }
   }
 
-// Function to delete a document
+// Function to delete a document (single source of truth: finance_log only)
   Future<void> _deleteReceipt(String docId) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('finance_log')
-          .doc(docId)
-          .get();
-      if (!doc.exists) return;
-      final data = doc.data() as Map<String, dynamic>;
-
-      // If it's a sponsorship, we must remove it from the 'subs' document
-      if (data['category'] == 'الكفالات' && data['sub_id'] != null) {
-        final subDocRef = FirebaseFirestore.instance
-            .collection('subs')
-            .doc(data['sub_id'].toString());
-        final subDoc = await subDocRef.get();
-
-        if (subDoc.exists) {
-          final subData = subDoc.data() as Map<String, dynamic>;
-          final periods = List<Map<String, dynamic>>.from(
-              data['selected_periods'] ?? []);
-
-          for (var p in periods) {
-            final year = p['year'].toString();
-            final month = p['month'].toString();
-
-            if (subData.containsKey(year) && subData[year].containsKey(month)) {
-              List receipts = List.from(subData[year][month]);
-              receipts.removeWhere(
-                  (r) => r['receipt_number'] == data['receipt_number']);
-
-              if (receipts.isEmpty) {
-                await subDocRef.update({
-                  "$year.$month": FieldValue.delete(),
-                });
-              } else {
-                await subDocRef.update({
-                  "$year.$month": receipts,
-                });
-              }
-            }
-          }
-        }
-      }
-
       await FirebaseFirestore.instance
           .collection('finance_log')
           .doc(docId)
@@ -795,7 +711,7 @@ class _IncomePageState extends State<IncomePage> {
           await FirebaseFirestore.instance.collection('subs').get();
       subs = subsSnapshot.docs
           .map((doc) => {
-                'id': doc.id,
+                'id': doc.data()['id'].toString(),
                 'name': doc.data()['name'] as String,
               })
           .toList();
@@ -834,40 +750,10 @@ class _IncomePageState extends State<IncomePage> {
         selectedSubId = data['sub_id'];
         selectedSubName = data['name'];
       } else {
-        // Fallback for legacy data
-        try {
-          final subDocRef =
-              FirebaseFirestore.instance.collection('subs').doc(data['sub_id']);
-          final subDocSnapshot = await subDocRef.get();
-
-          if (subDocSnapshot.exists) {
-            final subData = subDocSnapshot.data() as Map<String, dynamic>;
-
-            // Scan all year keys in the sub document to find stored periods for this receipt
-            subData.forEach((key, value) {
-              if (value is Map && RegExp(r'^\d{4}$').hasMatch(key)) {
-                (value as Map<String, dynamic>).forEach((monthKey, monthValue) {
-                  if (monthValue is List) {
-                    final hasReceipt = monthValue.any((r) =>
-                        r is Map &&
-                        r['receipt_number'] == data['receipt_number']);
-                    if (hasReceipt) {
-                      selectedPeriods.add({
-                        'year': int.parse(key),
-                        'month': int.parse(monthKey)
-                      });
-                    }
-                  }
-                });
-              }
-            });
-
-            selectedSubId = data['sub_id'];
-            selectedSubName = subData['name'];
-          }
-        } catch (e) {
-          print('Error retrieving sub data: $e');
-        }
+        // Legacy data without selected_periods stored in finance_log
+        // Just set the sub_id and name from the receipt data
+        selectedSubId = data['sub_id'];
+        selectedSubName = data['name'];
       }
     }
 
@@ -955,7 +841,7 @@ class _IncomePageState extends State<IncomePage> {
                               context: context,
                               initialDate: manualDate ?? DateTime.now(),
                               firstDate: DateTime(2020),
-                              lastDate: DateTime.now(),
+                              lastDate: DateTime(2100),
                             );
                             if (pickedDate != null) {
                               setState(() {
@@ -1151,144 +1037,6 @@ class _IncomePageState extends State<IncomePage> {
                         "userName": UserSession().fullName,
                       });
 
-                      // Update subs collection if category is الكفالات
-                      if (selectedCategory == 'الكفالات' &&
-                          selectedSubId != null) {
-                        try {
-                          final String oldSubId =
-                              data['sub_id']?.toString() ?? "";
-                          final String newSubId = selectedSubId.toString();
-
-                          // If the Sub ID has changed, we must remove the receipt from the old sub first
-                          if (oldSubId.isNotEmpty && oldSubId != newSubId) {
-                            final oldSubRef = FirebaseFirestore.instance
-                                .collection('subs')
-                                .doc(oldSubId);
-                            final oldSubSnap = await oldSubRef.get();
-                            if (oldSubSnap.exists) {
-                              Map<String, dynamic> oldSubData =
-                                  oldSubSnap.data() as Map<String, dynamic>;
-                              final oldPeriods = data['selected_periods'] !=
-                                      null
-                                  ? List<Map<String, dynamic>>.from(
-                                      data['selected_periods'])
-                                  : [];
-
-                              for (var oldP in oldPeriods) {
-                                final year = oldP['year'].toString();
-                                final month = oldP['month'].toString();
-                                if (oldSubData.containsKey(year) &&
-                                    oldSubData[year].containsKey(month)) {
-                                  List receipts =
-                                      List.from(oldSubData[year][month]);
-                                  receipts.removeWhere((r) =>
-                                      r['receipt_number'] ==
-                                      data['receipt_number']);
-                                  if (receipts.isEmpty) {
-                                    await oldSubRef.update({
-                                      "$year.$month": FieldValue.delete(),
-                                    });
-                                  } else {
-                                    await oldSubRef.update({
-                                      "$year.$month": receipts,
-                                    });
-                                  }
-                                }
-                              }
-                            }
-                          }
-
-                          // Now update/add to the new sub (or same sub if didn't change)
-                          final subDocRef = FirebaseFirestore.instance
-                              .collection('subs')
-                              .doc(newSubId);
-                          final subDocSnapshot = await subDocRef.get();
-                          Map<String, dynamic> subData = subDocSnapshot.exists
-                              ? subDocSnapshot.data() as Map<String, dynamic>
-                              : {};
-
-                          // If same sub, we still need to remove periods that are no longer selected
-                          if (oldSubId == newSubId) {
-                            final oldPeriods = data['selected_periods'] != null
-                                ? List<Map<String, dynamic>>.from(
-                                    data['selected_periods'])
-                                : [];
-
-                            for (var oldP in oldPeriods) {
-                              final stillSelected = selectedPeriods.any((newP) =>
-                                  newP['year'] == oldP['year'] &&
-                                  newP['month'] == oldP['month']);
-
-                              if (!stillSelected) {
-                                final year = oldP['year'].toString();
-                                final monthIndex = oldP['month'].toString();
-                                if (subData.containsKey(year) &&
-                                    subData[year].containsKey(monthIndex)) {
-                                  List receipts =
-                                      List.from(subData[year][monthIndex]);
-                                  receipts.removeWhere((r) =>
-                                      r['receipt_number'] ==
-                                      data['receipt_number']);
-                                  if (receipts.isEmpty) {
-                                    await subDocRef.update({
-                                      "$year.$monthIndex": FieldValue.delete(),
-                                    });
-                                  } else {
-                                    await subDocRef.update({
-                                      "$year.$monthIndex": receipts,
-                                    });
-                                  }
-                                  final upSnap = await subDocRef.get();
-                                  subData =
-                                      upSnap.data() as Map<String, dynamic>;
-                                }
-                              }
-                            }
-                          }
-
-                          // Add/Update current periods in the (potentially new) sub
-                          for (var period in selectedPeriods) {
-                            final year = period['year'].toString();
-                            final monthIndex = period['month'].toString();
-
-                            List receipts = [];
-                            if (subData.containsKey(year) &&
-                                subData[year].containsKey(monthIndex)) {
-                              receipts = List.from(subData[year][monthIndex]);
-                            }
-
-                            // Use the NEW receipt number from the controller
-                            final index = receipts.indexWhere(
-                                (r) => r['receipt_number'] == receiptNumber);
-                            if (index != -1) {
-                              receipts[index] = {
-                                "receipt_number": receiptNumber,
-                                "amount": amount,
-                              };
-                            } else {
-                              receipts.add({
-                                "receipt_number": receiptNumber,
-                                "amount": amount,
-                              });
-                            }
-
-                            await subDocRef.set({
-                              year: {monthIndex: receipts}
-                            }, SetOptions(merge: true));
-
-                            final upSnap = await subDocRef.get();
-                            subData = upSnap.data() as Map<String, dynamic>;
-                          }
-                        } catch (e) {
-                          print("Error updating subs collection: $e");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content:
-                                    Text("حدث خطأ أثناء تحديث الكفالة: $e")),
-                          );
-                        }
-                      }
-
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1347,6 +1095,10 @@ class _IncomePageState extends State<IncomePage> {
                                   .toString()
                                   .contains(_nameOrReceiptFilter);
 
+                      final matchesNotes = _notesFilter.isEmpty ||
+                          (data['notes'] != null &&
+                              data['notes'].toString().contains(_notesFilter));
+
                       final matchesCategory = _selectedCategory == 'الكل' ||
                           data['category'] == _selectedCategory;
 
@@ -1362,6 +1114,7 @@ class _IncomePageState extends State<IncomePage> {
                                       _endDate!.add(const Duration(days: 1))));
 
                       return matchesNameOrReceipt &&
+                          matchesNotes &&
                           matchesCategory &&
                           matchesDateRange;
                     }).toList();
@@ -1375,8 +1128,12 @@ class _IncomePageState extends State<IncomePage> {
                       });
                     } else {
                       filteredLogs.sort((a, b) {
-                        final aId = int.tryParse(a.get('receipt_number').toString()) ?? 0;
-                        final bId = int.tryParse(b.get('receipt_number').toString()) ?? 0;
+                        final aId =
+                            int.tryParse(a.get('receipt_number').toString()) ??
+                                0;
+                        final bId =
+                            int.tryParse(b.get('receipt_number').toString()) ??
+                                0;
                         return aId.compareTo(bId);
                       });
                     }
@@ -1400,6 +1157,15 @@ class _IncomePageState extends State<IncomePage> {
                             labelText: "الاسم أو رقم الإيصال"),
                         onChanged: (value) =>
                             setState(() => _nameOrReceiptFilter = value),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        decoration:
+                            const InputDecoration(labelText: "الملاحظات"),
+                        onChanged: (value) =>
+                            setState(() => _notesFilter = value),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1500,6 +1266,10 @@ class _IncomePageState extends State<IncomePage> {
                                   .toString()
                                   .contains(_nameOrReceiptFilter);
 
+                      final matchesNotes = _notesFilter.isEmpty ||
+                          (data['notes'] != null &&
+                              data['notes'].toString().contains(_notesFilter));
+
                       final matchesCategory = _selectedCategory == 'الكل' ||
                           data['category'] == _selectedCategory;
 
@@ -1515,6 +1285,7 @@ class _IncomePageState extends State<IncomePage> {
                                       _endDate!.add(const Duration(days: 1))));
 
                       return matchesNameOrReceipt &&
+                          matchesNotes &&
                           matchesCategory &&
                           matchesDateRange;
                     }).toList();
@@ -1615,7 +1386,9 @@ class _IncomePageState extends State<IncomePage> {
                                   tooltip: "طباعة",
                                 ),
                                 // Edit and Delete
-                                if (UserSession().isAdmin || UserSession().isModerator)
+                                if (UserSession().isAdmin ||
+                                    UserSession().isModerator ||
+                                    UserSession().isAccountingModerator)
                                   IconButton(
                                     icon: const Icon(Icons.edit,
                                         color: Colors.blue),

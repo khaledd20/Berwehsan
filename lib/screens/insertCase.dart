@@ -27,7 +27,7 @@ class _InsertCaseState extends State<InsertCase> {
   final TextEditingController cSizeController = TextEditingController();
   final TextEditingController sSizeController = TextEditingController();
   final TextEditingController gradeIdController = TextEditingController();
-  
+
   DateTime? _selectedBirthDate;
   final TextEditingController balanceController =
       TextEditingController(); // New controller for `balance`
@@ -286,7 +286,8 @@ class _InsertCaseState extends State<InsertCase> {
         'c_size': cSizeController.text,
         'S_size': sSizeController.text,
         'birth_date': _selectedBirthDate?.toIso8601String() ?? '',
-        'age': AgeCalculator.calculateAge(_selectedBirthDate?.toIso8601String(), 0),
+        'age': AgeCalculator.calculateAge(
+            _selectedBirthDate?.toIso8601String(), 0),
         'grade_id': gradeIdController.text,
         'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
         'chest_ids': selectedChestIds,

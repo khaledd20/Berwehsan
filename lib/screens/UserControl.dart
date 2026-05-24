@@ -21,6 +21,8 @@ class _UserControlPageState extends State<UserControlPage> {
   int? selectedRoleId; // Holds the selected role ID
 
   final List<Map<String, dynamic>> roles = [
+    {'id': 7, 'name': 'مشرف سكرتير'},
+    {'id': 6, 'name': 'مشرف محاسب'},
     {'id': 5, 'name': 'محاسب'},
     {'id': 4, 'name': 'سكرتير'},
     {'id': 3, 'name': 'مدير'},

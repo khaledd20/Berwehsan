@@ -29,7 +29,7 @@ class _EditCaseState extends State<EditCase> {
   final TextEditingController cSizeController = TextEditingController();
   final TextEditingController sSizeController = TextEditingController();
   final TextEditingController gradeIdController = TextEditingController();
-  
+
   DateTime? _selectedBirthDate;
   int? _oldAge;
   final TextEditingController balanceController = TextEditingController();
@@ -73,12 +73,16 @@ class _EditCaseState extends State<EditCase> {
           numberController.text = data['number'];
           cSizeController.text = data['c_size'];
           sSizeController.text = data['S_size'];
-          
-          if (data['birth_date'] != null && data['birth_date'].toString().isNotEmpty) {
-            _selectedBirthDate = DateTime.tryParse(data['birth_date'].toString());
+
+          if (data['birth_date'] != null &&
+              data['birth_date'].toString().isNotEmpty) {
+            _selectedBirthDate =
+                DateTime.tryParse(data['birth_date'].toString());
           }
-          _oldAge = data['age'] is int ? data['age'] : int.tryParse(data['age']?.toString() ?? '0');
-          
+          _oldAge = data['age'] is int
+              ? data['age']
+              : int.tryParse(data['age']?.toString() ?? '0');
+
           gradeIdController.text = data['grade_id'];
           balanceController.text = data['balance'].toString();
           selectedAreaId = data['area_id'].toString();
@@ -328,7 +332,8 @@ class _EditCaseState extends State<EditCase> {
         'c_size': cSizeController.text,
         'S_size': sSizeController.text,
         'birth_date': _selectedBirthDate?.toIso8601String() ?? '',
-        'age': AgeCalculator.calculateAge(_selectedBirthDate?.toIso8601String(), _oldAge),
+        'age': AgeCalculator.calculateAge(
+            _selectedBirthDate?.toIso8601String(), _oldAge),
         'grade_id': gradeIdController.text,
         'area_id': int.tryParse(selectedAreaId ?? '0') ?? 0,
         'chest_ids': selectedChestIds,
@@ -423,7 +428,9 @@ class _EditCaseState extends State<EditCase> {
                       ),
                       child: Text(
                         _selectedBirthDate == null
-                            ? (_oldAge != null ? 'تاريخ الميلاد غير مسجل (العمر القديم: $_oldAge)' : 'اضغط لاختيار تاريخ الميلاد')
+                            ? (_oldAge != null
+                                ? 'تاريخ الميلاد غير مسجل (العمر القديم: $_oldAge)'
+                                : 'اضغط لاختيار تاريخ الميلاد')
                             : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year} (العمر: ${AgeCalculator.calculateAge(_selectedBirthDate!.toIso8601String(), _oldAge)})',
                         style: TextStyle(
                             color: _selectedBirthDate == null && _oldAge == null

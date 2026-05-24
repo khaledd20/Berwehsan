@@ -48,11 +48,11 @@ class LoginScreenWeb extends StatelessWidget {
           // Roles 1 (User), 2 (Moderator), 3 (Admin) → go to Cases
           if (role == 3 || role == 2 || role == 1) {
             nextScreen = const CasesPage();
-          } else if (role == 4) {
-            // Secretary → go to Feeding
+          } else if (role == 4 || role == 7) {
+            // Secretary / Secretary Moderator → go to Feeding
             nextScreen = const FeedingPage();
-          } else if (role == 5) {
-            // Accounting → go to IncomePage
+          } else if (role == 5 || role == 6) {
+            // Accounting / Accounting Moderator → go to IncomePage
             nextScreen = const IncomePage();
           } else {
             ScaffoldMessenger.of(context).showSnackBar(

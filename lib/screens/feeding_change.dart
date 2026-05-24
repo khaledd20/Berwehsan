@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:berwehsan/core/user_session.dart';
+import 'package:berwehsan/widgets/app_drawer.dart';
 
 class FeedingChangePage extends StatefulWidget {
   const FeedingChangePage({super.key});
@@ -59,6 +60,7 @@ class _FeedingChangePageState extends State<FeedingChangePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: const Text('تغيير تاريخ مستند التغذية')),
+        drawer: const AppDrawer(),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: FutureBuilder<List<String>>(

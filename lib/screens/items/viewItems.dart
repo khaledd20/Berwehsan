@@ -124,8 +124,11 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                                 '$countText\nملاحظات: $note',
                                 textAlign: TextAlign.right,
                               ),
-                              if (UserSession().isAdmin && data.containsKey('userName'))
-                                Text("بواسطة: ${data['userName']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              if (UserSession().isAdmin &&
+                                  data.containsKey('userName'))
+                                Text("بواسطة: ${data['userName']}",
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 12)),
                             ],
                           ), // Align subtitle text to the right
                           trailing: Row(
@@ -146,10 +149,11 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                                 },
                               ),
                               // Edit
-                              if (UserSession().isAdmin || UserSession().isModerator)
+                              if (UserSession().isAdmin ||
+                                  UserSession().isModerator)
                                 IconButton(
-                                  icon:
-                                      const Icon(Icons.edit, color: Colors.blue),
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.blue),
                                   onPressed: () {
                                     // Navigate to edit item page
                                     Navigator.push(
@@ -164,8 +168,8 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                               // Delete
                               if (UserSession().isAdmin)
                                 IconButton(
-                                  icon:
-                                      const Icon(Icons.delete, color: Colors.red),
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
                                   onPressed: () {
                                     // Confirm and delete item
                                     _confirmDelete(context, item.id);

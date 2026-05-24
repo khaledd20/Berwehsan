@@ -2,13 +2,16 @@ import 'dart:io';
 
 void main() {
   final dir = Directory(r'c:\Users\khali\Desktop\Berwehsan-1\lib\screens');
-  final files = dir.listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'));
+  final files = dir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'));
 
   int modifiedCount = 0;
 
   for (final file in files) {
     String content = file.readAsStringSync();
-    
+
     if (content.contains('<style>')) {
       bool changed = false;
 
@@ -18,11 +21,12 @@ void main() {
         int lastImportIndex = content.lastIndexOf(RegExp(r"import\s+'[^']+';"));
         if (lastImportIndex != -1) {
           int endOfLine = content.indexOf('\n', lastImportIndex);
-          content = content.substring(0, endOfLine + 1) + 
-                    "import 'package:berwehsan/core/print_style.dart';\n" + 
-                    content.substring(endOfLine + 1);
+          content = content.substring(0, endOfLine + 1) +
+              "import 'package:berwehsan/core/print_style.dart';\n" +
+              content.substring(endOfLine + 1);
         } else {
-          content = "import 'package:berwehsan/core/print_style.dart';\n" + content;
+          content =
+              "import 'package:berwehsan/core/print_style.dart';\n" + content;
         }
       }
 
@@ -40,9 +44,12 @@ void main() {
 
       // Let's use Regex to find everything from buffer.writeln('<html>'); or buffer.writeln('<head>') or <style>
       // up to <body> and the first heading <h1> or <h2> or <h3>
-      
-      final stylePattern = RegExp(r"(buffer\.writeln\(['\u0022]<html[^\n]*\n)?(buffer\.writeln\(['\u0022]<head>[^\n]*\n)?(buffer\.writeln\(['\u0022]<meta charset=[^\n]*\n)?buffer\.writeln\(['\u0022]<style>[^\n]*\n(?:.*?buffer\.writeln\(['\u0022].*?\n)*?buffer\.writeln\(['\u0022]<\/style>['\u0022]\);\n(buffer\.writeln\(['\u0022]<\/head>['\u0022]\);\n)?(buffer\.writeln\(['\u0022]<body[^>]*>['\u0022]\);\n)?", multiLine: true, dotAll: true);
-      
+
+      final stylePattern = RegExp(
+          r"(buffer\.writeln\(['\u0022]<html[^\n]*\n)?(buffer\.writeln\(['\u0022]<head>[^\n]*\n)?(buffer\.writeln\(['\u0022]<meta charset=[^\n]*\n)?buffer\.writeln\(['\u0022]<style>[^\n]*\n(?:.*?buffer\.writeln\(['\u0022].*?\n)*?buffer\.writeln\(['\u0022]<\/style>['\u0022]\);\n(buffer\.writeln\(['\u0022]<\/head>['\u0022]\);\n)?(buffer\.writeln\(['\u0022]<body[^>]*>['\u0022]\);\n)?",
+          multiLine: true,
+          dotAll: true);
+
       content = content.replaceAllMapped(stylePattern, (match) {
         changed = true;
         return "buffer.writeln('<html>');\nbuffer.writeln(PrintStyle.htmlHead);\nbuffer.writeln('<body>');\n";
@@ -50,7 +57,8 @@ void main() {
 
       // Now we need to replace the first <h1> or <h2> after the newly replaced body with PrintStyle.getHeader(...)
       // Actually, since we replaced <body>, let's find the first <h\d> that comes right after.
-      final h1Pattern = RegExp(r"buffer\.writeln\(['\u0022]<h[1-3]>(.*?)<\/h[1-3]>['\u0022]\);\n");
+      final h1Pattern = RegExp(
+          r"buffer\.writeln\(['\u0022]<h[1-3]>(.*?)<\/h[1-3]>['\u0022]\);\n");
       content = content.replaceAllMapped(h1Pattern, (match) {
         // We only want to replace if it is close to <body>, but replacing all <h> at root is fine for these tables usually.
         // Wait, what if there's multiple? We can just replace all headings with getHeader(title) or just the first one.
@@ -72,7 +80,8 @@ void main() {
 
       // Some files have `<style>table { width: 100%; border-collapse: collapse; margin-top: 20px; }` on a single line!
       // Example: buffer.writeln('<style>table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
-      final singleLineStylePattern = RegExp(r"buffer\.writeln\(['\u0022]<style>table.*?['\u0022]\);\n");
+      final singleLineStylePattern =
+          RegExp(r"buffer\.writeln\(['\u0022]<style>table.*?['\u0022]\);\n");
       content = content.replaceAllMapped(singleLineStylePattern, (match) {
         changed = true;
         return "buffer.writeln('<html>');\nbuffer.writeln(PrintStyle.htmlHead);\nbuffer.writeln('<body>');\n";

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:html' as html;
 import 'package:intl/intl.dart' as intl;
+
 class AdminChestsPage extends StatelessWidget {
   const AdminChestsPage({super.key});
 
@@ -154,84 +155,86 @@ class AdminChestsPage extends StatelessWidget {
   }
 
   Future<void> _addChest(BuildContext context) async {
-  final nameController = TextEditingController();
-  final balanceController = TextEditingController();
+    final nameController = TextEditingController();
+    final balanceController = TextEditingController();
 
-  await showDialog(
-    context: context,
-    builder: (context) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: const Text('إضافة صندوق جديد'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'اسم الصندوق'),
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('إضافة صندوق جديد'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'اسم الصندوق'),
+                ),
+                TextField(
+                  controller: balanceController,
+                  decoration: const InputDecoration(labelText: 'الرصيد'),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
               ),
-              TextField(
-                controller: balanceController,
-                decoration: const InputDecoration(labelText: 'الرصيد'),
-                keyboardType: TextInputType.number,
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameController.text.isNotEmpty &&
+                      balanceController.text.isNotEmpty) {
+                    try {
+                      // Fetch the last chest to determine the next ID
+                      final querySnapshot = await FirebaseFirestore.instance
+                          .collection('chests')
+                          .orderBy('id', descending: true)
+                          .limit(1)
+                          .get();
+
+                      int nextId = 1; // Default ID if no chests exist
+                      if (querySnapshot.docs.isNotEmpty) {
+                        final lastChest = querySnapshot.docs.first.data();
+                        nextId = (lastChest['id'] ?? 0) + 1;
+                      }
+
+                      await FirebaseFirestore.instance
+                          .collection('chests')
+                          .add({
+                        'name': nameController.text,
+                        'balance': int.parse(balanceController.text),
+                        'created_at': DateTime.now().toIso8601String(),
+                        'updated_at': DateTime.now().toIso8601String(),
+                        'id': nextId, // Assign the auto-generated ID
+                      });
+
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم إضافة الصندوق بنجاح')),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('حدث خطأ: $e')),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('يرجى ملء جميع الحقول')),
+                    );
+                  }
+                },
+                child: const Text('إضافة'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isNotEmpty &&
-                    balanceController.text.isNotEmpty) {
-                  try {
-                    // Fetch the last chest to determine the next ID
-                    final querySnapshot = await FirebaseFirestore.instance
-                        .collection('chests')
-                        .orderBy('id', descending: true)
-                        .limit(1)
-                        .get();
-
-                    int nextId = 1; // Default ID if no chests exist
-                    if (querySnapshot.docs.isNotEmpty) {
-                      final lastChest = querySnapshot.docs.first.data();
-                      nextId = (lastChest['id'] ?? 0) + 1;
-                    }
-
-                    await FirebaseFirestore.instance.collection('chests').add({
-                      'name': nameController.text,
-                      'balance': int.parse(balanceController.text),
-                      'created_at': DateTime.now().toIso8601String(),
-                      'updated_at': DateTime.now().toIso8601String(),
-                      'id': nextId, // Assign the auto-generated ID
-                    });
-
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم إضافة الصندوق بنجاح')),
-                    );
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('حدث خطأ: $e')),
-                    );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('يرجى ملء جميع الحقول')),
-                  );
-                }
-              },
-              child: const Text('إضافة'),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Future<void> _deleteChest(BuildContext context, String docId) async {
     await FirebaseFirestore.instance.collection('chests').doc(docId).delete();
@@ -575,269 +578,271 @@ class ItemDetailsChest extends StatelessWidget {
     );
   }
 
-  Widget buildSingleSelectDropdown(String label, List<Map<String, dynamic>> items, String? selectedItem, Function(String?) onItemSelected) {
-  TextEditingController searchController = TextEditingController();
-  List<Map<String, dynamic>> filteredItems = items; // Initially show all items
+  Widget buildSingleSelectDropdown(
+      String label,
+      List<Map<String, dynamic>> items,
+      String? selectedItem,
+      Function(String?) onItemSelected) {
+    TextEditingController searchController = TextEditingController();
+    List<Map<String, dynamic>> filteredItems =
+        items; // Initially show all items
 
-  return StatefulBuilder(
-    builder: (context, setState) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Card(
-          child: Column(
-            children: [
-              // Label
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                  controller: searchController,
-                  decoration: const InputDecoration(
-                    labelText: 'بحث',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      filteredItems = items
-                          .where((item) => item['name']
-                              .toString()
-                              .toLowerCase()
-                              .contains(value.toLowerCase()))
-                          .toList();
-                    });
-                  },
-                ),
-              ),
-
-              // Items List (filteredItems)
-              ...filteredItems.map((item) {
-                return RadioListTile<String>(
-                  value: item['id'],
-                  groupValue: selectedItem,
-                  title: Text(item['name'] ?? ''),
-                  onChanged: (value) {
-                    setState(() {
-                      onItemSelected(value);
-                    });
-                  },
-                );
-              }).toList(),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-void _updateChestBalance(
-    BuildContext context, String chestId, int currentBalance,
-    {required bool isAdd}) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      final TextEditingController balanceController = TextEditingController();
-      final TextEditingController manualNameController =
-          TextEditingController();
-      DateTime? selectedDate;
-      String? selectedEntityId; // Holds the selected donor/case ID
-      String? selectedEntityName; // Holds the selected donor/case name
-      bool isManualInput = false; // Toggle between manual input and selection
-
-      return StatefulBuilder(builder: (context, setState) {
-        return AlertDialog(
-          title: Text(isAdd ? 'إضافة إلى الرصيد' : 'سحب من الرصيد'),
-          content: SingleChildScrollView(
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Card(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // Current Balance
-                Text('الرصيد الحالي: $currentBalance'),
-                const SizedBox(height: 16),
+                // Label
+                Text(label,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
 
-                // Date Picker
-                ElevatedButton(
-                  onPressed: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime.now(),
-                    );
-                    if (pickedDate != null) {
-                      setState(() => selectedDate = pickedDate);
-                    }
-                  },
-                  child: Text(
-                    selectedDate == null
-                        ? 'اختر تاريخ الإيصال'
-                        : intl.DateFormat('yyyy-MM-dd').format(selectedDate!),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Amount Input
-                TextField(
-                  controller: balanceController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'أدخل المبلغ',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Toggle Between Manual Input and Collection Selection
-                Row(
-                  children: [
-                    Expanded(
-                      child: RadioListTile<bool>(
-                        title: const Text('اختر من القائمة'),
-                        value: false,
-                        groupValue: isManualInput,
-                        onChanged: (value) {
-                          setState(() {
-                            isManualInput = value!;
-                          });
-                        },
-                      ),
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'بحث',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
                     ),
-                    Expanded(
-                      child: RadioListTile<bool>(
-                        title: const Text('إضافة يدويًا'),
-                        value: true,
-                        groupValue: isManualInput,
-                        onChanged: (value) {
-                          setState(() {
-                            isManualInput = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Show Dropdown or Manual Input Based on Selection
-                if (!isManualInput)
-                  FutureBuilder<QuerySnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection(isAdd ? 'subs' : 'cases')
-                        .get(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator();
-                      }
-                      final entities = snapshot.data!.docs.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        return {'id': doc.id, 'name': data['name']};
-                      }).toList();
-
-                      return buildSingleSelectDropdown(
-                        isAdd ? 'اختر المتبرع' : 'اختر الحالة',
-                        entities,
-                        selectedEntityId,
-                        (value) {
-                          setState(() {
-                            selectedEntityId = value;
-                            selectedEntityName = entities
-                                .firstWhere(
-                                    (item) => item['id'] == value)['name'];
-                          });
-                        },
-                      );
+                    onChanged: (value) {
+                      setState(() {
+                        filteredItems = items
+                            .where((item) => item['name']
+                                .toString()
+                                .toLowerCase()
+                                .contains(value.toLowerCase()))
+                            .toList();
+                      });
                     },
-                  )
-                else
-                  TextField(
-                    controller: manualNameController,
-                    decoration: InputDecoration(
-                      labelText: isAdd ? 'اسم المتبرع' : 'اسم الحالة',
-                      border: const OutlineInputBorder(),
-                    ),
                   ),
+                ),
+
+                // Items List (filteredItems)
+                ...filteredItems.map((item) {
+                  return RadioListTile<String>(
+                    value: item['id'],
+                    groupValue: selectedItem,
+                    title: Text(item['name'] ?? ''),
+                    onChanged: (value) {
+                      setState(() {
+                        onItemSelected(value);
+                      });
+                    },
+                  );
+                }).toList(),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final int updateAmount =
-                    int.tryParse(balanceController.text) ?? 0;
+        );
+      },
+    );
+  }
 
-                // Validate inputs
-                if (updateAmount <= 0 ||
-                    selectedDate == null ||
-                    (!isManualInput &&
-                        (selectedEntityId == null || selectedEntityName == null)) ||
-                    (isManualInput && manualNameController.text.trim().isEmpty)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content:
-                            Text('يرجى ملء جميع الحقول المطلوبة بشكل صحيح.')),
-                  );
-                  return;
-                }
+  void _updateChestBalance(
+      BuildContext context, String chestId, int currentBalance,
+      {required bool isAdd}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final TextEditingController balanceController = TextEditingController();
+        final TextEditingController manualNameController =
+            TextEditingController();
+        DateTime? selectedDate;
+        String? selectedEntityId; // Holds the selected donor/case ID
+        String? selectedEntityName; // Holds the selected donor/case name
+        bool isManualInput = false; // Toggle between manual input and selection
 
-                final int beforeAmount = currentBalance;
-                final int afterAmount = isAdd
-                    ? currentBalance + updateAmount
-                    : (currentBalance - updateAmount >= 0
-                        ? currentBalance - updateAmount
-                        : 0);
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: Text(isAdd ? 'إضافة إلى الرصيد' : 'سحب من الرصيد'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Current Balance
+                  Text('الرصيد الحالي: $currentBalance'),
+                  const SizedBox(height: 16),
 
-                final String currentTime = DateTime.now().toIso8601String();
-
-                // Update chest balance and add history log
-                await FirebaseFirestore.instance
-                    .collection('chests')
-                    .doc(chestId)
-                    .update({
-                  'balance': afterAmount,
-                  'updated_at': currentTime,
-                });
-
-                await FirebaseFirestore.instance.collection('chest_log').add({
-                  'chest_id': chestId,
-                  'amount': updateAmount,
-                  'status': isAdd ? 'in' : 'out',
-                  'before_amount': beforeAmount,
-                  'after_amount': afterAmount,
-                  'created_date': currentTime,
-                  'created_at': selectedDate?.toIso8601String(),
-                  isAdd ? 'donor_name' : 'case_name': isManualInput
-                      ? manualNameController.text
-                      : selectedEntityName,
-                });
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isAdd
-                          ? 'تم إضافة $updateAmount بنجاح.'
-                          : 'تم سحب $updateAmount بنجاح.',
+                  // Date Picker
+                  ElevatedButton(
+                    onPressed: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                      );
+                      if (pickedDate != null) {
+                        setState(() => selectedDate = pickedDate);
+                      }
+                    },
+                    child: Text(
+                      selectedDate == null
+                          ? 'اختر تاريخ الإيصال'
+                          : intl.DateFormat('yyyy-MM-dd').format(selectedDate!),
                     ),
                   ),
-                );
-              },
-              child: const Text('حفظ'),
+                  const SizedBox(height: 16),
+
+                  // Amount Input
+                  TextField(
+                    controller: balanceController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'أدخل المبلغ',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Toggle Between Manual Input and Collection Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<bool>(
+                          title: const Text('اختر من القائمة'),
+                          value: false,
+                          groupValue: isManualInput,
+                          onChanged: (value) {
+                            setState(() {
+                              isManualInput = value!;
+                            });
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<bool>(
+                          title: const Text('إضافة يدويًا'),
+                          value: true,
+                          groupValue: isManualInput,
+                          onChanged: (value) {
+                            setState(() {
+                              isManualInput = value!;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Show Dropdown or Manual Input Based on Selection
+                  if (!isManualInput)
+                    FutureBuilder<QuerySnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection(isAdd ? 'subs' : 'cases')
+                          .get(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const CircularProgressIndicator();
+                        }
+                        final entities = snapshot.data!.docs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return {'id': doc.id, 'name': data['name']};
+                        }).toList();
+
+                        return buildSingleSelectDropdown(
+                          isAdd ? 'اختر المتبرع' : 'اختر الحالة',
+                          entities,
+                          selectedEntityId,
+                          (value) {
+                            setState(() {
+                              selectedEntityId = value;
+                              selectedEntityName = entities.firstWhere(
+                                  (item) => item['id'] == value)['name'];
+                            });
+                          },
+                        );
+                      },
+                    )
+                  else
+                    TextField(
+                      controller: manualNameController,
+                      decoration: InputDecoration(
+                        labelText: isAdd ? 'اسم المتبرع' : 'اسم الحالة',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ],
-        );
-      });
-    },
-  );
-}
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final int updateAmount =
+                      int.tryParse(balanceController.text) ?? 0;
 
+                  // Validate inputs
+                  if (updateAmount <= 0 ||
+                      selectedDate == null ||
+                      (!isManualInput &&
+                          (selectedEntityId == null ||
+                              selectedEntityName == null)) ||
+                      (isManualInput &&
+                          manualNameController.text.trim().isEmpty)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('يرجى ملء جميع الحقول المطلوبة بشكل صحيح.')),
+                    );
+                    return;
+                  }
 
+                  final int beforeAmount = currentBalance;
+                  final int afterAmount = isAdd
+                      ? currentBalance + updateAmount
+                      : (currentBalance - updateAmount >= 0
+                          ? currentBalance - updateAmount
+                          : 0);
 
+                  final String currentTime = DateTime.now().toIso8601String();
 
+                  // Update chest balance and add history log
+                  await FirebaseFirestore.instance
+                      .collection('chests')
+                      .doc(chestId)
+                      .update({
+                    'balance': afterAmount,
+                    'updated_at': currentTime,
+                  });
 
+                  await FirebaseFirestore.instance.collection('chest_log').add({
+                    'chest_id': chestId,
+                    'amount': updateAmount,
+                    'status': isAdd ? 'in' : 'out',
+                    'before_amount': beforeAmount,
+                    'after_amount': afterAmount,
+                    'created_date': currentTime,
+                    'created_at': selectedDate?.toIso8601String(),
+                    isAdd ? 'donor_name' : 'case_name': isManualInput
+                        ? manualNameController.text
+                        : selectedEntityName,
+                  });
+
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isAdd
+                            ? 'تم إضافة $updateAmount بنجاح.'
+                            : 'تم سحب $updateAmount بنجاح.',
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('حفظ'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
 }

@@ -166,12 +166,12 @@ class _ItineraryPageState extends State<ItineraryPage> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      formKey.currentState!.save();
-                      formData['date'] = selectedDate.toIso8601String();
-                      formData['userName'] = UserSession().fullName;
+                  if (formKey.currentState!.validate()) {
+                    formKey.currentState!.save();
+                    formData['date'] = selectedDate.toIso8601String();
+                    formData['userName'] = UserSession().fullName;
 
-                      try {
+                    try {
                       if (itineraryData['docId'] != null) {
                         await FirebaseFirestore.instance
                             .collection('itineraries')
@@ -354,15 +354,19 @@ class _ItineraryPageState extends State<ItineraryPage> {
                           Text(
                               'ثمن المواصلات: ${itinerary['cost']?.toString() ?? 'غير معروف'}'),
                           Text('ملحوظات: ${itinerary['notes']}'),
-                          if (UserSession().isAdmin && itinerary.containsKey('userName'))
-                            Text("بواسطة: ${itinerary['userName']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          if (UserSession().isAdmin &&
+                              itinerary.containsKey('userName'))
+                            Text("بواسطة: ${itinerary['userName']}",
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           // Edit for Admin and Moderator
-                          if (UserSession().isAdmin || UserSession().isModerator)
+                          if (UserSession().isAdmin ||
+                              UserSession().isModerator)
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => showEditDialog(itinerary),
@@ -376,8 +380,8 @@ class _ItineraryPageState extends State<ItineraryPage> {
                                   context: context,
                                   builder: (context) => AlertDialog(
                                     title: const Text('تأكيد الحذف'),
-                                    content:
-                                        const Text('هل تريد حقًا حذف خط السير؟'),
+                                    content: const Text(
+                                        'هل تريد حقًا حذف خط السير؟'),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(context),
@@ -424,13 +428,14 @@ class _ItineraryPageState extends State<ItineraryPage> {
     );
   }
 
-  Future<void> printItinerariesData(BuildContext context, List<Map<String, dynamic>> itinerariesList) async {
+  Future<void> printItinerariesData(
+      BuildContext context, List<Map<String, dynamic>> itinerariesList) async {
     final buffer = StringBuffer();
 
     // Start of HTML document
     buffer.writeln('<html>');
-buffer.writeln(PrintStyle.htmlHead);
-buffer.writeln('<body>');
+    buffer.writeln(PrintStyle.htmlHead);
+    buffer.writeln('<body>');
     buffer.writeln(PrintStyle.getHeader('جدول خط السير'));
     buffer.writeln('<table>');
     buffer.writeln(

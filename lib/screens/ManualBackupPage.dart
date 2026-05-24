@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:convert';
@@ -48,7 +48,9 @@ class _ManualBackupPageState extends State<ManualBackupPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(status, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+                Text(status,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 18)),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.backup),
@@ -56,7 +58,8 @@ class _ManualBackupPageState extends State<ManualBackupPage> {
                   onPressed: isLoading ? null : _startManualBackup,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
                 ),
               ],
@@ -94,13 +97,15 @@ class BackupManager {
       final Map<String, dynamic> backupData = {};
 
       for (String collectionName in collectionNames) {
-        final collectionSnapshot = await firestore.collection(collectionName).get();
+        final collectionSnapshot =
+            await firestore.collection(collectionName).get();
 
         backupData[collectionName] = collectionSnapshot.docs.map((doc) {
           return {'id': doc.id, 'data': doc.data()};
         }).toList();
 
-        print("✅ تم سحب بيانات $collectionName بعدد ${collectionSnapshot.docs.length} سجل");
+        print(
+            "✅ تم سحب بيانات $collectionName بعدد ${collectionSnapshot.docs.length} سجل");
       }
 
       final String jsonData = jsonEncode(backupData);

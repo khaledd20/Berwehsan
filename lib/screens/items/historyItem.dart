@@ -251,8 +251,11 @@ class _HistoryItemPageState extends State<HistoryItemPage> {
                                   textAlign: TextAlign.right),
                               Text('تاريخ الإنشاء: $formattedDate',
                                   textAlign: TextAlign.right),
-                              if (UserSession().isAdmin && log.containsKey('userName'))
-                                Text("بواسطة: ${log['userName']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              if (UserSession().isAdmin &&
+                                  log.containsKey('userName'))
+                                Text("بواسطة: ${log['userName']}",
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 12)),
                             ],
                           ),
                         ),

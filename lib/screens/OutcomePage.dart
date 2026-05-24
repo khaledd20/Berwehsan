@@ -15,6 +15,7 @@ class OutcomePage extends StatefulWidget {
 
 class _OutcomePageState extends State<OutcomePage> {
   String _nameOrReceiptFilter = '';
+  String _notesFilter = '';
   String _selectedCategory = 'الكل';
   DateTime? _startDate;
   DateTime? _endDate;
@@ -308,7 +309,6 @@ class _OutcomePageState extends State<OutcomePage> {
       );
     }
   }
-
 
   Future<void> _printReceipt(Map<String, dynamic> data) async {
     final buffer = StringBuffer();
@@ -620,6 +620,13 @@ class _OutcomePageState extends State<OutcomePage> {
                                 data['receipt_number']
                                     .toString()
                                     .contains(_nameOrReceiptFilter);
+
+                        final matchesNotes = _notesFilter.isEmpty ||
+                            (data['notes'] != null &&
+                                data['notes']
+                                    .toString()
+                                    .contains(_notesFilter));
+
                         // Filter by category
                         final matchesCategory = _selectedCategory == 'الكل' ||
                             data['category'] == _selectedCategory;
@@ -638,6 +645,7 @@ class _OutcomePageState extends State<OutcomePage> {
                                             .add(const Duration(days: 1))));
 
                         return matchesNameOrReceipt &&
+                            matchesNotes &&
                             matchesCategory &&
                             matchesDateRange;
                       }).toList();
@@ -651,8 +659,12 @@ class _OutcomePageState extends State<OutcomePage> {
                         });
                       } else {
                         filteredLogs.sort((a, b) {
-                          final aId = int.tryParse(a.get('receipt_number').toString()) ?? 0;
-                          final bId = int.tryParse(b.get('receipt_number').toString()) ?? 0;
+                          final aId = int.tryParse(
+                                  a.get('receipt_number').toString()) ??
+                              0;
+                          final bId = int.tryParse(
+                                  b.get('receipt_number').toString()) ??
+                              0;
                           return aId.compareTo(bId);
                         });
                       }
@@ -684,6 +696,15 @@ class _OutcomePageState extends State<OutcomePage> {
                             labelText: "الاسم أو رقم الإيصال"),
                         onChanged: (value) =>
                             setState(() => _nameOrReceiptFilter = value),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        decoration:
+                            const InputDecoration(labelText: "الملاحظات"),
+                        onChanged: (value) =>
+                            setState(() => _notesFilter = value),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -788,6 +809,10 @@ class _OutcomePageState extends State<OutcomePage> {
                                   .toString()
                                   .contains(_nameOrReceiptFilter);
 
+                      final matchesNotes = _notesFilter.isEmpty ||
+                          (data['notes'] != null &&
+                              data['notes'].toString().contains(_notesFilter));
+
                       final matchesCategory = _selectedCategory == 'الكل' ||
                           data['category'] == _selectedCategory;
 
@@ -803,6 +828,7 @@ class _OutcomePageState extends State<OutcomePage> {
                                       _endDate!.add(const Duration(days: 1))));
 
                       return matchesNameOrReceipt &&
+                          matchesNotes &&
                           matchesCategory &&
                           matchesDateRange;
                     }).toList();
@@ -872,7 +898,9 @@ class _OutcomePageState extends State<OutcomePage> {
                                   tooltip: "طباعة",
                                 ),
                                 // Edit and Delete
-                                if (UserSession().isAdmin || UserSession().isModerator)
+                                if (UserSession().isAdmin ||
+                                    UserSession().isModerator ||
+                                    UserSession().isAccountingModerator)
                                   IconButton(
                                     icon: const Icon(Icons.edit,
                                         color: Colors.blue),

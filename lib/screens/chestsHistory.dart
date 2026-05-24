@@ -27,8 +27,8 @@ class _ChestsHistoryPageState extends State<ChestsHistoryPage> {
     final buffer = StringBuffer();
 
     buffer.writeln('<html>');
-buffer.writeln(PrintStyle.htmlHead);
-buffer.writeln('<body>');
+    buffer.writeln(PrintStyle.htmlHead);
+    buffer.writeln('<body>');
     buffer.writeln(PrintStyle.getHeader('تفاصيل العملية'));
     buffer.writeln('<table>');
     buffer.writeln('<tr><td>المبلغ</td><td>${data['amount']}</td></tr>');
@@ -148,8 +148,7 @@ buffer.writeln('<body>');
         'th, td { border: 1px solid black; padding: 8px; text-align: right; }'
         'th { background-color: #f2f2f2; text-align: center; }'
         '</style></head>');
-    buffer.writeln(
-        PrintStyle.getHeader('سجل العمليات للصندوق'));
+    buffer.writeln(PrintStyle.getHeader('سجل العمليات للصندوق'));
     buffer.writeln(
         '<table><tr><th>المتبرع/الحالة</th><th>بعد العملية</th><th>قبل العملية</th><th>الحالة</th><th>المبلغ</th><th>التاريخ</th></tr>');
 
@@ -281,8 +280,11 @@ buffer.writeln('<body>');
                                 Text("المتبرع: ${data['donor_name']}"),
                               if (data.containsKey('case_name'))
                                 Text("الحالة: ${data['case_name']}"),
-                              if (UserSession().isAdmin && data.containsKey('userName'))
-                                Text("بواسطة: ${data['userName']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              if (UserSession().isAdmin &&
+                                  data.containsKey('userName'))
+                                Text("بواسطة: ${data['userName']}",
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 12)),
                             ],
                           ),
                           trailing: Row(
@@ -295,18 +297,20 @@ buffer.writeln('<body>');
                                 tooltip: 'طباعة',
                               ),
                               // Edit
-                              if (UserSession().isAdmin || UserSession().isModerator)
+                              if (UserSession().isAdmin ||
+                                  UserSession().isModerator ||
+                                  UserSession().isAccountingModerator)
                                 IconButton(
-                                  icon:
-                                      const Icon(Icons.edit, color: Colors.blue),
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.blue),
                                   onPressed: () => _editLog(docId, data),
                                   tooltip: 'تعديل',
                                 ),
                               // Delete
                               if (UserSession().isAdmin)
                                 IconButton(
-                                  icon:
-                                      const Icon(Icons.delete, color: Colors.red),
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
                                   onPressed: () => _deleteLog(docId),
                                   tooltip: 'حذف',
                                 ),

@@ -83,7 +83,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             final allDocs = snapshot.data!.docs;
             final docs = allDocs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              
+
               // Privacy check
               int? currentRole = UserSession().role;
               String? currentName = UserSession().fullName;
@@ -93,12 +93,14 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                 String privacyType = data['privacy_type'] ?? 'public';
                 if (privacyType == 'roles') {
                   List<dynamic> allowedRoles = data['allowed_roles'] ?? [];
-                  if (currentRole == null || !allowedRoles.contains(currentRole)) {
+                  if (currentRole == null ||
+                      !allowedRoles.contains(currentRole)) {
                     return false;
                   }
                 } else if (privacyType == 'users') {
                   List<dynamic> allowedUsers = data['allowed_users'] ?? [];
-                  if (currentName == null || !allowedUsers.contains(currentName)) {
+                  if (currentName == null ||
+                      !allowedUsers.contains(currentName)) {
                     return false;
                   }
                 } else {
@@ -106,7 +108,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                   if (data.containsKey('allowed_roles')) {
                     List<dynamic> allowedRoles = data['allowed_roles'] ?? [];
                     if (allowedRoles.isNotEmpty) {
-                      if (currentRole == null || !allowedRoles.contains(currentRole)) {
+                      if (currentRole == null ||
+                          !allowedRoles.contains(currentRole)) {
                         return false;
                       }
                     }
@@ -115,18 +118,19 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
               }
 
               final parentId = data['parent_id'];
-              
+
               // Handle root level
               if (widget.parentFolderId == null) {
                 return parentId == null || parentId == '';
               }
-              
+
               // Handle nested level
               return parentId == widget.parentFolderId;
             }).toList();
 
             if (docs.isEmpty) {
-              return const Center(child: Text('هذا المجلد فارغ أو لا تملك صلاحية رؤيته'));
+              return const Center(
+                  child: Text('هذا المجلد فارغ أو لا تملك صلاحية رؤيته'));
             }
 
             return ListView.builder(
@@ -166,9 +170,11 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                         ),
                       if (UserSession().canEditOrDelete)
                         IconButton(
-                          icon: const Icon(Icons.lock_outline, color: Colors.teal),
+                          icon: const Icon(Icons.lock_outline,
+                              color: Colors.teal),
                           tooltip: 'صلاحيات الرؤية',
-                          onPressed: () => _showEditPrivacyDialog(context, docId, data),
+                          onPressed: () =>
+                              _showEditPrivacyDialog(context, docId, data),
                         ),
                       if (UserSession().isAdmin)
                         IconButton(
@@ -212,7 +218,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('نوع الخصوصية:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text('نوع الخصوصية:',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
           value: selectedPrivacyType,
@@ -235,7 +242,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         ),
         if (selectedPrivacyType == 'roles') ...[
           const SizedBox(height: 15),
-          const Text('اختر الأدوار المصرح لها:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('اختر الأدوار المصرح لها:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           ...availableRoles.entries.map((entry) {
             return CheckboxListTile(
               title: Text(entry.value),
@@ -257,7 +265,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         ],
         if (selectedPrivacyType == 'users') ...[
           const SizedBox(height: 15),
-          const Text('اختر المستخدمين المصرح لهم:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('اختر المستخدمين المصرح لهم:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 5),
           FutureBuilder<List<Map<String, dynamic>>>(
             future: _fetchUsers(),
@@ -274,7 +283,9 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                   ),
                 );
               }
-              if (userSnapshot.hasError || !userSnapshot.hasData || userSnapshot.data!.isEmpty) {
+              if (userSnapshot.hasError ||
+                  !userSnapshot.hasData ||
+                  userSnapshot.data!.isEmpty) {
                 return const Text('لا يوجد مستخدمين متاحين');
               }
               final users = userSnapshot.data!;
@@ -292,13 +303,15 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                       final name = u['FullName'];
                       final int role = u['Role'];
                       // Exclude admin and moderator since they see everything anyway
-                      if (role == 3 || role == 2) return const SizedBox.shrink();
+                      if (role == 3 || role == 2)
+                        return const SizedBox.shrink();
                       return CheckboxListTile(
                         title: Text(name),
                         value: selectedUsers.contains(name),
                         dense: true,
                         controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 10),
                         onChanged: (bool? val) {
                           setDialogState(() {
                             if (val == true) {
@@ -342,7 +355,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                   children: [
                     TextField(
                       controller: controller,
-                      decoration: const InputDecoration(labelText: 'اسم المجلد'),
+                      decoration:
+                          const InputDecoration(labelText: 'اسم المجلد'),
                     ),
                     const SizedBox(height: 20),
                     _buildPrivacyWidget(
@@ -360,7 +374,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء')),
               ElevatedButton(
                 onPressed: () async {
                   if (controller.text.isNotEmpty) {
@@ -369,8 +384,10 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                       'type': 'folder',
                       'parent_id': widget.parentFolderId,
                       'privacy_type': selectedPrivacyType,
-                      'allowed_roles': selectedPrivacyType == 'roles' ? selectedRoles : [],
-                      'allowed_users': selectedPrivacyType == 'users' ? selectedUsers : [],
+                      'allowed_roles':
+                          selectedPrivacyType == 'roles' ? selectedRoles : [],
+                      'allowed_users':
+                          selectedPrivacyType == 'users' ? selectedUsers : [],
                       'created_at': DateTime.now().toIso8601String(),
                     });
                     Navigator.pop(context);
@@ -385,7 +402,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
     );
   }
 
-  Future<void> _showEditPrivacyDialog(BuildContext context, String docId, Map<String, dynamic> data) async {
+  Future<void> _showEditPrivacyDialog(
+      BuildContext context, String docId, Map<String, dynamic> data) async {
     String selectedPrivacyType = data['privacy_type'] ?? 'public';
     List<int> selectedRoles = List<int>.from(data['allowed_roles'] ?? []);
     List<String> selectedUsers = List<String>.from(data['allowed_users'] ?? []);
@@ -420,12 +438,15 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                 onPressed: () async {
                   await _firestore.collection('admin_files').doc(docId).update({
                     'privacy_type': selectedPrivacyType,
-                    'allowed_roles': selectedPrivacyType == 'roles' ? selectedRoles : [],
-                    'allowed_users': selectedPrivacyType == 'users' ? selectedUsers : [],
+                    'allowed_roles':
+                        selectedPrivacyType == 'roles' ? selectedRoles : [],
+                    'allowed_users':
+                        selectedPrivacyType == 'users' ? selectedUsers : [],
                   });
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم تحديث صلاحيات الرؤية بنجاح')),
+                    const SnackBar(
+                        content: Text('تم تحديث صلاحيات الرؤية بنجاح')),
                   );
                 },
                 child: const Text('حفظ التعديلات'),
@@ -453,11 +474,11 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
 
       final docList = folders.where((f) => f.id == id).toList();
       if (docList.isEmpty) return 'مجلد محذوف';
-      
+
       final data = docList.first.data() as Map<String, dynamic>;
       final parentId = data['parent_id'];
       final name = data['name'] ?? 'بدون اسم';
-      
+
       if (parentId == null || parentId == '') {
         folderPaths[id] = name;
         return name;
@@ -468,17 +489,18 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         return path;
       }
     }
-    
+
     for (var f in folders) {
       getFolderPathSafe(f.id, []);
     }
 
     final folderList = folders.toList();
-    folderList.sort((a, b) => (folderPaths[a.id] ?? '').compareTo(folderPaths[b.id] ?? ''));
+    folderList.sort(
+        (a, b) => (folderPaths[a.id] ?? '').compareTo(folderPaths[b.id] ?? ''));
 
     String? selectedFolderId = widget.parentFolderId;
     String selectedFolderName = widget.folderName;
-    
+
     String selectedPrivacyType = 'public';
     List<int> selectedRoles = [];
     List<String> selectedUsers = [];
@@ -524,7 +546,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                           if (val == null) {
                             selectedFolderName = 'الملفات الادارية';
                           } else {
-                            selectedFolderName = folderPaths[val] ?? 'مجلد بدون اسم';
+                            selectedFolderName =
+                                folderPaths[val] ?? 'مجلد بدون اسم';
                           }
                         });
                       },
@@ -588,7 +611,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تم رفع "$fileName" إلى "$selectedFolderName"')),
+          SnackBar(
+              content: Text('تم رفع "$fileName" إلى "$selectedFolderName"')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -614,11 +638,11 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
 
       final docList = folders.where((f) => f.id == id).toList();
       if (docList.isEmpty) return 'مجلد محذوف';
-      
+
       final data = docList.first.data() as Map<String, dynamic>;
       final parentId = data['parent_id'];
       final name = data['name'] ?? 'بدون اسم';
-      
+
       if (parentId == null || parentId == '') {
         folderPaths[id] = name;
         return name;
@@ -629,18 +653,19 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         return path;
       }
     }
-    
+
     for (var f in folders) {
       getFolderPathSafe(f.id, []);
     }
 
     final folderList = folders.toList();
-    folderList.sort((a, b) => (folderPaths[a.id] ?? '').compareTo(folderPaths[b.id] ?? ''));
+    folderList.sort(
+        (a, b) => (folderPaths[a.id] ?? '').compareTo(folderPaths[b.id] ?? ''));
 
     final folderNameController = TextEditingController();
     String? selectedFolderId = widget.parentFolderId;
     String selectedFolderName = widget.folderName;
-    
+
     String selectedPrivacyType = 'public';
     List<int> selectedRoles = [];
     List<String> selectedUsers = [];
@@ -694,7 +719,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                           if (val == null) {
                             selectedFolderName = 'الملفات الادارية';
                           } else {
-                            selectedFolderName = folderPaths[val] ?? 'مجلد بدون اسم';
+                            selectedFolderName =
+                                folderPaths[val] ?? 'مجلد بدون اسم';
                           }
                         });
                       },
@@ -767,7 +793,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
 
       try {
         final folderName = folderNameController.text.trim();
-        
+
         final newFolderRef = await _firestore.collection('admin_files').add({
           'name': folderName,
           'type': 'folder',
@@ -777,12 +803,12 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
           'allowed_users': selectedPrivacyType == 'users' ? selectedUsers : [],
           'created_at': DateTime.now().toIso8601String(),
         });
-        
+
         final newFolderId = newFolderRef.id;
 
         for (var file in result.files) {
           if (file.bytes == null) continue;
-          
+
           final fileBytes = file.bytes!;
           final fileName = file.name;
           final storagePath =
@@ -798,8 +824,10 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             'storage_path': storagePath,
             'parent_id': newFolderId,
             'privacy_type': selectedPrivacyType,
-            'allowed_roles': selectedPrivacyType == 'roles' ? selectedRoles : [],
-            'allowed_users': selectedPrivacyType == 'users' ? selectedUsers : [],
+            'allowed_roles':
+                selectedPrivacyType == 'roles' ? selectedRoles : [],
+            'allowed_users':
+                selectedPrivacyType == 'users' ? selectedUsers : [],
             'created_at': DateTime.now().toIso8601String(),
           });
         }
@@ -807,11 +835,13 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         Navigator.pop(context);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تم إنشاء مجلد "$folderName" ورفع جميع الملفات بنجاح')),
+          SnackBar(
+              content:
+                  Text('تم إنشاء مجلد "$folderName" ورفع جميع الملفات بنجاح')),
         );
       } catch (e) {
         Navigator.pop(context);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء الرفع: $e')),
         );
@@ -865,8 +895,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               title: const Text('تأكيد الحذف'),
-              content: Text(isFolder 
-                  ? 'هل أنت متأكد من حذف هذا المجلد وجميع محتوياته من ملفات ومجلدات فرعية؟' 
+              content: Text(isFolder
+                  ? 'هل أنت متأكد من حذف هذا المجلد وجميع محتوياته من ملفات ومجلدات فرعية؟'
                   : 'هل أنت متأكد من حذف هذا الملف؟'),
               actions: [
                 TextButton(
@@ -896,8 +926,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 15),
-                  Text(isFolder 
-                      ? 'جاري حذف المجلد ومحتوياته الفرعية...' 
+                  Text(isFolder
+                      ? 'جاري حذف المجلد ومحتوياته الفرعية...'
                       : 'جاري حذف الملف...'),
                 ],
               ),
@@ -920,7 +950,10 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         Navigator.pop(context); // Close loading dialog
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isFolder ? 'تم حذف المجلد ومحتوياته بنجاح' : 'تم حذف الملف بنجاح')),
+          SnackBar(
+              content: Text(isFolder
+                  ? 'تم حذف المجلد ومحتوياته بنجاح'
+                  : 'تم حذف الملف بنجاح')),
         );
       } catch (e) {
         Navigator.pop(context); // Close loading dialog

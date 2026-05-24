@@ -106,7 +106,8 @@ class _SubsPageState extends State<SubsPage> {
 
       fetchSubs();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف الكفالة بنجاح وتم تحديث الحالات المرتبطة')),
+        const SnackBar(
+            content: Text('تم حذف الكفالة بنجاح وتم تحديث الحالات المرتبطة')),
       );
     } catch (error) {
       print('Error deleting sub: $error');
@@ -280,6 +281,8 @@ class _SubsPageState extends State<SubsPage> {
     );
   }
 
+  /// Dynamically queries finance_log to build the yearly sponsorship report.
+  /// This is the single-source-of-truth approach — no dependency on subs collection data.
   Future<void> printYearlyReport(
       BuildContext context, String docId, String year, String subName) async {
     final buffer = StringBuffer();
@@ -294,46 +297,79 @@ class _SubsPageState extends State<SubsPage> {
         .writeln('<tr><th>الشهر</th><th>رقم الإيصال</th><th>المبلغ</th></tr>');
 
     try {
-      final subDocSnapshot =
-          await FirebaseFirestore.instance.collection('subs').doc(docId).get();
+      // Query finance_log for all sponsorship receipts linked to this sponsor
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('finance_log')
+          .where('category', isEqualTo: 'الكفالات')
+          .where('sub_id', isEqualTo: docId)
+          .get()
+          .timeout(const Duration(seconds: 10));
 
-      if (!subDocSnapshot.exists) {
-        throw 'الكفالة غير موجودة أو تم حذفها.';
-      }
+      // Build a map: month -> list of {receipt_number, amount}
+      // by scanning selected_periods in each receipt for the target year
+      final int targetYear = int.parse(year);
+      final Map<int, List<Map<String, dynamic>>> monthlyData = {};
 
-      final subData = subDocSnapshot.data() as Map<String, dynamic>?;
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        final receiptNumber = data['receipt_number']?.toString() ?? 'لا يوجد';
+        final amount =
+            (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
 
-      if (subData == null || !subData.containsKey(year)) {
-        throw 'لا توجد بيانات لهذا العام.';
-      }
-
-      final yearData = subData[year] as Map<String, dynamic>?;
-
-      for (int month = 1; month <= 12; month++) {
-        final monthKey = month.toString();
-        if (yearData != null && yearData.containsKey(monthKey)) {
-          final monthReceipts = yearData[monthKey] as List;
-
-          if (monthReceipts.isNotEmpty) {
-            for (final receipt in monthReceipts) {
-              if (receipt is Map<String, dynamic>) {
-                final receiptNumber =
-                    receipt['receipt_number']?.toString() ?? 'لا يوجد';
-                final amount = receipt['amount'] ?? 0;
-
-                buffer.writeln(
-                    '<tr><td>${intl.DateFormat.MMMM('ar').format(DateTime(0, month))}</td><td>$receiptNumber</td><td>$amount</td></tr>');
-              }
+        final periods = data['selected_periods'];
+        bool hasValidPeriods = false;
+        if (periods != null && periods is List) {
+          for (final p in periods) {
+            if (p is Map && p.containsKey('year') && p.containsKey('month')) {
+              hasValidPeriods = true;
+              break;
             }
-          } else {
+          }
+        }
+
+        if (hasValidPeriods) {
+          for (final period in (periods as List)) {
+            if (period is! Map) continue;
+            var pYear = period['year'];
+            var pMonth = period['month'];
+            if (pYear is String) pYear = int.tryParse(pYear) ?? 0;
+            if (pMonth is String) pMonth = int.tryParse(pMonth) ?? 0;
+
+            if (pYear == targetYear &&
+                pMonth is int &&
+                pMonth >= 1 &&
+                pMonth <= 12) {
+              monthlyData.putIfAbsent(pMonth, () => []);
+              monthlyData[pMonth]!.add({
+                'receipt_number': receiptNumber,
+                'amount': amount,
+              });
+            }
+          }
+        }
+      }
+
+      // Render all 12 months
+      int totalAmount = 0;
+      for (int month = 1; month <= 12; month++) {
+        final monthName = intl.DateFormat.MMMM('ar').format(DateTime(0, month));
+
+        if (monthlyData.containsKey(month) && monthlyData[month]!.isNotEmpty) {
+          for (final receipt in monthlyData[month]!) {
+            final amt = receipt['amount'] ?? 0;
+            totalAmount += (amt is int) ? amt : 0;
             buffer.writeln(
-                '<tr><td>${intl.DateFormat.MMMM('ar').format(DateTime(0, month))}</td><td>لا يوجد</td><td>0</td></tr>');
+                '<tr><td>$monthName</td><td>${receipt['receipt_number']}</td><td>$amt</td></tr>');
           }
         } else {
           buffer.writeln(
-              '<tr><td>${intl.DateFormat.MMMM('ar').format(DateTime(0, month))}</td><td>لا يوجد</td><td>0</td></tr>');
+              '<tr><td>$monthName</td><td>لا يوجد</td><td>0</td></tr>');
         }
       }
+
+      // Total row
+      buffer.writeln(
+          '<tr><td colspan="2" style="font-weight: bold; text-align: center;">الإجمالي</td><td style="font-weight: bold;">$totalAmount</td></tr>');
     } catch (e) {
       buffer.writeln(
           '<tr><td colspan="3">حدث خطأ أثناء جلب البيانات: $e</td></tr>');
@@ -506,14 +542,15 @@ class _SubsPageState extends State<SubsPage> {
                           ),
                           TextButton(
                             onPressed: () => showYearSelectionDialog(
-                                context, sub['name'], sub['docId']),
+                                context, sub['name'], sub['id'].toString()),
                             child: const Text(
                               'كشف توريد الكفالة',
                               style: TextStyle(color: Colors.orange),
                             ),
                           ),
                           if (UserSession().isAdmin ||
-                              UserSession().isModerator)
+                              UserSession().isModerator ||
+                              UserSession().isAccountingModerator)
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => showEditDialog(sub),
@@ -658,7 +695,8 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.print),
-                  onPressed: () => printCasesForSub(context, widget.subId, subName),
+                  onPressed: () =>
+                      printCasesForSub(context, widget.subId, subName),
                   tooltip: 'طباعة الحالات للكفالة',
                 ),
               ],
@@ -718,17 +756,31 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
 
                       final cases = snapshot.data!.docs;
                       final sortedCases = List.from(cases);
-                      
+
                       if (_sortByName) {
                         sortedCases.sort((a, b) {
-                          final aName = (a.data() as Map<String, dynamic>)['name']?.toString() ?? '';
-                          final bName = (b.data() as Map<String, dynamic>)['name']?.toString() ?? '';
+                          final aName =
+                              (a.data() as Map<String, dynamic>)['name']
+                                      ?.toString() ??
+                                  '';
+                          final bName =
+                              (b.data() as Map<String, dynamic>)['name']
+                                      ?.toString() ??
+                                  '';
                           return aName.compareTo(bName);
                         });
                       } else {
                         sortedCases.sort((a, b) {
-                          final aId = int.tryParse((a.data() as Map<String, dynamic>)['id']?.toString() ?? '') ?? 0;
-                          final bId = int.tryParse((b.data() as Map<String, dynamic>)['id']?.toString() ?? '') ?? 0;
+                          final aId = int.tryParse(
+                                  (a.data() as Map<String, dynamic>)['id']
+                                          ?.toString() ??
+                                      '') ??
+                              0;
+                          final bId = int.tryParse(
+                                  (b.data() as Map<String, dynamic>)['id']
+                                          ?.toString() ??
+                                      '') ??
+                              0;
                           return aId.compareTo(bId);
                         });
                       }
@@ -741,7 +793,8 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
 
                           return Card(
                             elevation: 3,
-                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 16),
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Column(
@@ -749,8 +802,8 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
                                 children: [
                                   Text(
                                     'الاسم: ${caseData['name'] ?? 'غير معروف'}',
-                                    style:
-                                        const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   Text(
                                       'رقم التعريف: ${caseData['id'] ?? 'غير معروف'}'),
@@ -783,8 +836,8 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
     buffer.writeln('<html>');
     buffer.writeln(PrintStyle.htmlHead);
     buffer.writeln('<body>');
-    buffer.writeln(
-        PrintStyle.getHeader('الحالات للكفالة ($subName - رقم التعريف: $subId)'));
+    buffer.writeln(PrintStyle.getHeader(
+        'الحالات للكفالة ($subName - رقم التعريف: $subId)'));
     buffer.writeln('<table>');
     buffer.writeln(
         '<tr><th>رقم الحالة</th><th>الاسم</th><th>العنوان</th><th>رقم الهاتف</th><th>الرصيد</th></tr>');
@@ -797,14 +850,20 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
       final cases = List.from(querySnapshot.docs);
       if (_sortByName) {
         cases.sort((a, b) {
-          final aName = (a.data() as Map<String, dynamic>)['name']?.toString() ?? '';
-          final bName = (b.data() as Map<String, dynamic>)['name']?.toString() ?? '';
+          final aName =
+              (a.data() as Map<String, dynamic>)['name']?.toString() ?? '';
+          final bName =
+              (b.data() as Map<String, dynamic>)['name']?.toString() ?? '';
           return aName.compareTo(bName);
         });
       } else {
         cases.sort((a, b) {
-          final aId = int.tryParse((a.data() as Map<String, dynamic>)['id']?.toString() ?? '') ?? 0;
-          final bId = int.tryParse((b.data() as Map<String, dynamic>)['id']?.toString() ?? '') ?? 0;
+          final aId = int.tryParse(
+                  (a.data() as Map<String, dynamic>)['id']?.toString() ?? '') ??
+              0;
+          final bId = int.tryParse(
+                  (b.data() as Map<String, dynamic>)['id']?.toString() ?? '') ??
+              0;
           return aId.compareTo(bId);
         });
       }
@@ -815,8 +874,8 @@ class _CasesForSubPageState extends State<CasesForSubPage> {
             '<tr><td>${caseData['id']}</td><td>${caseData['name'] ?? 'غير معروف'}</td><td>${caseData['location'] ?? 'غير معروف'}</td><td>${caseData['number'] ?? 'غير معروف'}</td><td>${caseData['balance'] ?? 0}</td></tr>');
       }
     } catch (e) {
-      buffer.writeln(
-          '<tr><td colspan="5">حدث خطأ أثناء جلب البيانات</td></tr>');
+      buffer
+          .writeln('<tr><td colspan="5">حدث خطأ أثناء جلب البيانات</td></tr>');
       print('Error fetching cases: $e');
     }
 

@@ -96,7 +96,8 @@ class _CashHistoryPageState extends State<CashHistoryPage> {
   /// Fetch case names for displayed case IDs
   Future<void> _fetchCaseNames() async {
     Set<int> caseIds = cashHistory.map((doc) => doc['case_id'] as int).toSet();
-    final missingIds = caseIds.where((id) => !caseNames.containsKey(id)).toList();
+    final missingIds =
+        caseIds.where((id) => !caseNames.containsKey(id)).toList();
 
     if (missingIds.isEmpty) return;
 
@@ -169,10 +170,7 @@ class _CashHistoryPageState extends State<CashHistoryPage> {
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance
-          .collection('cashs')
-          .doc(doc.id)
-          .delete();
+      await FirebaseFirestore.instance.collection('cashs').doc(doc.id).delete();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حذف السجل بنجاح')),
@@ -431,25 +429,26 @@ class _CashHistoryPageState extends State<CashHistoryPage> {
                             subtitle: Text(
                                 'الاسم: $caseName\nالتاريخ: ${data['created_at']} | المبلغ: ${data['credit']}'),
                             trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (UserSession().isModerator || UserSession().isAdmin)
-                                        IconButton(
-                                          icon: const Icon(Icons.edit,
-                                              color: Colors.blue),
-                                          onPressed: () => _editCashEntry(doc),
-                                          tooltip: 'تعديل',
-                                        ),
-                                      if (UserSession().isAdmin)
-                                        IconButton(
-                                          icon: const Icon(Icons.delete,
-                                              color: Colors.red),
-                                          onPressed: () =>
-                                              _deleteCashEntry(doc),
-                                          tooltip: 'حذف',
-                                        ),
-                                    ],
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (UserSession().isModerator ||
+                                    UserSession().isAdmin ||
+                                    UserSession().isAccountingModerator)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.blue),
+                                    onPressed: () => _editCashEntry(doc),
+                                    tooltip: 'تعديل',
                                   ),
+                                if (UserSession().isAdmin)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
+                                    onPressed: () => _deleteCashEntry(doc),
+                                    tooltip: 'حذف',
+                                  ),
+                              ],
+                            ),
                           ),
                         );
                       },
