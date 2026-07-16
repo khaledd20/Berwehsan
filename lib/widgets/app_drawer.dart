@@ -12,6 +12,7 @@ import 'package:berwehsan/screens/chests.dart';
 import 'package:berwehsan/screens/feedingHistory.dart';
 import 'package:berwehsan/screens/items/historyItem.dart';
 import 'package:berwehsan/screens/sub.dart';
+import 'package:berwehsan/screens/unpaid_subs.dart';
 import 'package:berwehsan/screens/id_documents.dart';
 import 'package:flutter/material.dart';
 import '../screens/feeding_change.dart';
@@ -183,7 +184,7 @@ class AppDrawer extends StatelessWidget {
             if (session.isAdmin ||
                 session.isModerator ||
                 session.isAccounting ||
-                session.isAccountingModerator)
+                session.isAccountingModerator) ...[
               ListTile(
                 leading: const Icon(Icons.people),
                 title: const Text('الكفالة'),
@@ -192,6 +193,17 @@ class AppDrawer extends StatelessWidget {
                       MaterialPageRoute(builder: (context) => SubsPage()));
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.money_off),
+                title: const Text('كفالات غير مسددة'),
+                onTap: () {
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const UnpaidSubsPage()));
+                },
+              ),
+            ],
 
             // المناطق - Available to Admin, Moderator, Secretary (Role 4), Accounting (Role 5)
             if (session.isAdmin ||
@@ -273,7 +285,7 @@ class AppDrawer extends StatelessWidget {
                           builder: (context) => const ManualBackupPage()));
                 },
               ),
-              ListTile(
+              /* ListTile(
                 leading: const Icon(Icons.restore),
                 title: const Text('استعادة نسخة احتياطية'),
                 onTap: () {
@@ -282,9 +294,9 @@ class AppDrawer extends StatelessWidget {
                       MaterialPageRoute(
                           builder: (context) => const RestoreBackupScreen()));
                 },
-              ),
+              ), */
             ],
-            if (session.isAdmin)
+            /* if (session.isAdmin)
               ListTile(
                 leading: const Icon(Icons.build),
                 title: const Text('أداة ربط معرفات الكفلاء'),
@@ -294,7 +306,7 @@ class AppDrawer extends StatelessWidget {
                       MaterialPageRoute(
                           builder: (context) => const SubIdMigrationPage()));
                 },
-              ),
+              ), */
 
             ListTile(
               leading: const Icon(Icons.login),
