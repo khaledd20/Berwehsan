@@ -40,24 +40,28 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
         final data = doc.data();
         final subIdStr = data['sub_id']?.toString() ?? '';
         final subName = data['name']?.toString().trim() ?? '';
-        
+
         final periods = data['selected_periods'];
         if (periods != null && periods is List) {
           for (final period in periods) {
             if (period is Map) {
               var pYear = period['year'];
               var pMonth = period['month'];
-              
+
               if (pYear is String) pYear = int.tryParse(pYear) ?? 0;
               if (pMonth is String) pMonth = int.tryParse(pMonth) ?? 0;
 
               if (pYear is int && pMonth is int && pYear > 0 && pMonth > 0) {
                 int absoluteMonth = (pYear * 12) + pMonth;
                 if (subIdStr.isNotEmpty) {
-                  paidAbsoluteMonthsById.putIfAbsent(subIdStr, () => {}).add(absoluteMonth);
+                  paidAbsoluteMonthsById
+                      .putIfAbsent(subIdStr, () => {})
+                      .add(absoluteMonth);
                 }
                 if (subName.isNotEmpty) {
-                  paidAbsoluteMonthsByName.putIfAbsent(subName, () => {}).add(absoluteMonth);
+                  paidAbsoluteMonthsByName
+                      .putIfAbsent(subName, () => {})
+                      .add(absoluteMonth);
                 }
               }
             }
@@ -78,7 +82,7 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
         final docId = doc.id;
         final subData = doc.data();
         final subName = subData['name']?.toString().trim() ?? '';
-        
+
         Set<int> paidAbsoluteMonths = {};
         if (paidAbsoluteMonthsById.containsKey(docId)) {
           paidAbsoluteMonths.addAll(paidAbsoluteMonthsById[docId]!);
@@ -86,10 +90,9 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
         if (paidAbsoluteMonthsByName.containsKey(subName)) {
           paidAbsoluteMonths.addAll(paidAbsoluteMonthsByName[subName]!);
         }
-        
+
         // If they haven't paid THIS month, we consider them for this list
         if (!paidAbsoluteMonths.contains(currentAbsoluteMonth)) {
-          
           // Check disconnected status: unpaid for current and previous 3 months (> 3 months total)
           bool isDisconnected = true;
           for (int i = 0; i <= 3; i++) {
@@ -101,7 +104,7 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
 
           // Compute unpaid months for past and current year (for display/print)
           List<String> unpaidMonthsDisplay = [];
-          
+
           // Past year
           for (int m = 1; m <= 12; m++) {
             if (!paidAbsoluteMonths.contains(((currentYear - 1) * 12) + m)) {
@@ -112,7 +115,8 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
           // Current year
           for (int m = 1; m <= currentMonth; m++) {
             if (!paidAbsoluteMonths.contains((currentYear * 12) + m)) {
-              unpaidMonthsDisplay.add('$m'); // display just the month for the current year
+              unpaidMonthsDisplay
+                  .add('$m'); // display just the month for the current year
             }
           }
 
@@ -146,9 +150,13 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
 
   List<Map<String, dynamic>> get _filteredSubs {
     if (_filter == 'ThisMonthOnly') {
-      return allUnpaidSubs.where((sub) => sub['is_disconnected'] == false).toList();
+      return allUnpaidSubs
+          .where((sub) => sub['is_disconnected'] == false)
+          .toList();
     } else if (_filter == 'Disconnected') {
-      return allUnpaidSubs.where((sub) => sub['is_disconnected'] == true).toList();
+      return allUnpaidSubs
+          .where((sub) => sub['is_disconnected'] == true)
+          .toList();
     }
     return allUnpaidSubs;
   }
@@ -157,7 +165,7 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
     final buffer = StringBuffer();
     final currentYear = DateTime.now().year;
     final currentMonth = DateTime.now().month;
-    
+
     final subsToPrint = _filteredSubs;
 
     buffer.writeln('<html>');
@@ -167,7 +175,8 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
     if (_filter == 'ThisMonthOnly') filterTitle = ' - غير مسدد هذا الشهر';
     if (_filter == 'Disconnected') filterTitle = ' - منقطع';
 
-    buffer.writeln(PrintStyle.getHeader('كفالات غير مسددة لشهر $currentMonth / $currentYear$filterTitle'));
+    buffer.writeln(PrintStyle.getHeader(
+        'كفالات غير مسددة لشهر $currentMonth / $currentYear$filterTitle'));
     buffer.writeln('<table>');
     buffer.writeln(
         '<tr><th>رقم التعريف</th><th>الاسم</th><th>الموقع</th><th>رقم الهاتف</th><th>الأشهر غير المسددة</th><th>المبلغ</th></tr>');
@@ -176,10 +185,12 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
       buffer.writeln('<tr><td colspan="6">لا توجد كفالات مطابقة</td></tr>');
     } else {
       for (var subData in subsToPrint) {
-        String unpaidMonthsStr = (subData['unpaid_months'] as List<String>).join(', ');
+        String unpaidMonthsStr =
+            (subData['unpaid_months'] as List<String>).join(', ');
         String nameStr = subData['name'] ?? 'غير معروف';
         if (subData['is_disconnected'] == true) {
-          nameStr += ' <span style="color:red; font-weight:bold;">(منقطع)</span>';
+          nameStr +=
+              ' <span style="color:red; font-weight:bold;">(منقطع)</span>';
         }
         buffer.writeln(
             '<tr><td>${subData['id'] ?? 'غير معروف'}</td><td>$nameStr</td><td>${subData['location'] ?? 'غير معروف'}</td><td>${subData['number'] ?? 'غير معروف'}</td><td>$unpaidMonthsStr</td><td>${subData['unite'] ?? 'غير معروف'}</td></tr>');
@@ -229,9 +240,16 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
                           value: _filter,
                           isExpanded: true,
                           items: const [
-                            DropdownMenuItem(value: 'All', child: Text('الكل (عرض جميع الكفالات غير المسددة)')),
-                            DropdownMenuItem(value: 'ThisMonthOnly', child: Text('غير مسدد هذا الشهر (غير منقطع)')),
-                            DropdownMenuItem(value: 'Disconnected', child: Text('منقطع (أكثر من 3 أشهر)')),
+                            DropdownMenuItem(
+                                value: 'All',
+                                child: Text(
+                                    'الكل (عرض جميع الكفالات غير المسددة)')),
+                            DropdownMenuItem(
+                                value: 'ThisMonthOnly',
+                                child: Text('غير مسدد هذا الشهر (غير منقطع)')),
+                            DropdownMenuItem(
+                                value: 'Disconnected',
+                                child: Text('منقطع (أكثر من 3 أشهر)')),
                           ],
                           onChanged: (value) {
                             if (value != null) {
@@ -255,7 +273,8 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
                       child: Center(
                         child: Text(
                           'لا توجد كفالات مطابقة للفلتر المحدد!',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ),
                     )
@@ -265,50 +284,52 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
                         itemCount: _filteredSubs.length,
                         itemBuilder: (context, index) {
                           final sub = _filteredSubs[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 16),
-                              child: ListTile(
-                                title: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        sub['name'] ?? 'لا يوجد',
-                                        overflow: TextOverflow.ellipsis,
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 16),
+                            child: ListTile(
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      sub['name'] ?? 'لا يوجد',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (sub['is_disconnected'] == true) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        'منقطع',
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 12),
                                       ),
                                     ),
-                                    if (sub['is_disconnected'] == true) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Text(
-                                          'منقطع',
-                                          style: TextStyle(color: Colors.white, fontSize: 12),
-                                        ),
-                                      ),
-                                    ],
                                   ],
-                                ),
-                                subtitle: Text(
-                                    'الموقع: ${sub['location']}\nالأشهر غير المسددة: ${(sub['unpaid_months'] as List<String>).join(', ')}'),
-                                trailing: Text(
-                                  'المبلغ: ${sub['unite'] ?? 0}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                  ),
+                                ],
+                              ),
+                              subtitle: Text(
+                                  'الموقع: ${sub['location']}\nالأشهر غير المسددة: ${(sub['unpaid_months'] as List<String>).join(', ')}'),
+                              trailing: Text(
+                                'المبلغ: ${sub['unite'] ?? 0}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                ],
+              ),
       ),
     );
   }

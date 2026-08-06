@@ -240,7 +240,9 @@ class AppDrawer extends StatelessWidget {
               ),
 
             // Inventory - Admin
-            if (session.isAdmin) ...[
+            if (session.isAdmin ||
+                session.isAccounting ||
+                session.isAccountingModerator) ...[
               ListTile(
                 leading: const Icon(Icons.store),
                 title: const Text('ادارة المخزن'),

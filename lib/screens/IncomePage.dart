@@ -343,6 +343,8 @@ class _IncomePageState extends State<IncomePage> {
                         "userName": UserSession().fullName,
                       });
 
+                      await _updateTotalsAtomically(deltaAmount: amount, isIncome: true);
+
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -614,55 +616,28 @@ class _IncomePageState extends State<IncomePage> {
     );
   }
 
-// Helper function to update the 'الاجمالي' document in the finance collection
-  Future<void> _updateTotalAmount() async {
-    int totalIn = 0;
-    int totalOut = 0;
-
+// Helper function to atomically update the 'الاجمالي' document in the finance collection
+  Future<void> _updateTotalsAtomically({required int deltaAmount, required bool isIncome}) async {
+    if (deltaAmount == 0) return;
+    
+    final totalRef = FirebaseFirestore.instance.collection('finance').doc('الاجمالي');
+    
     try {
-      // Fetch total "in" amount
-      final inSnapshot = await FirebaseFirestore.instance
-          .collection('finance_log')
-          .where('type', isEqualTo: 'in')
-          .get();
-
-      for (var doc in inSnapshot.docs) {
-        final data = doc.data();
-        final amount =
-            (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
-        totalIn += amount;
+      if (isIncome) {
+        await totalRef.set({
+          'total_in': FieldValue.increment(deltaAmount),
+          'balance': FieldValue.increment(deltaAmount),
+          'updated_at': DateTime.now().toIso8601String(),
+        }, SetOptions(merge: true));
+      } else {
+        await totalRef.set({
+          'total_out': FieldValue.increment(deltaAmount),
+          'balance': FieldValue.increment(-deltaAmount),
+          'updated_at': DateTime.now().toIso8601String(),
+        }, SetOptions(merge: true));
       }
-
-      // Fetch total "out" amount
-      final outSnapshot = await FirebaseFirestore.instance
-          .collection('finance_log')
-          .where('type', isEqualTo: 'out')
-          .get();
-
-      for (var doc in outSnapshot.docs) {
-        final data = doc.data();
-        final amount =
-            (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
-        totalOut += amount;
-      }
-
-      // Calculate the balance (total "in" - total "out")
-      final totalBalance = totalIn - totalOut;
-
-      // Update or create the "الإجمالي" document in the "finance" collection
-      await FirebaseFirestore.instance
-          .collection('finance')
-          .doc('الاجمالي')
-          .set({
-        "total_in": totalIn,
-        "total_out": totalOut,
-        "balance": totalBalance,
-        "updated_at": DateTime.now().toIso8601String(),
-      }, SetOptions(merge: true));
-
-      print("Balance updated successfully: $totalBalance");
     } catch (e) {
-      print("Error updating total amounts: $e");
+      print("Error updating totals atomically: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("حدث خطأ أثناء تحديث المجموع")),
       );
@@ -672,10 +647,16 @@ class _IncomePageState extends State<IncomePage> {
 // Function to delete a document (single source of truth: finance_log only)
   Future<void> _deleteReceipt(String docId) async {
     try {
+      final doc = await FirebaseFirestore.instance.collection('finance_log').doc(docId).get();
+      final docData = doc.data();
+      final amount = docData != null && docData['amount'] is num ? (docData['amount'] as num).toInt() : 0;
+
       await FirebaseFirestore.instance
           .collection('finance_log')
           .doc(docId)
           .delete();
+          
+      await _updateTotalsAtomically(deltaAmount: -amount, isIncome: true);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حذف الإيصال بنجاح!')),
@@ -1036,6 +1017,10 @@ class _IncomePageState extends State<IncomePage> {
                         "selected_periods": selectedPeriods,
                         "userName": UserSession().fullName,
                       });
+
+                      final oldAmount = (data['amount'] ?? 0) is num ? (data['amount'] as num).toInt() : 0;
+                      final deltaAmount = amount - oldAmount;
+                      await _updateTotalsAtomically(deltaAmount: deltaAmount, isIncome: true);
 
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(

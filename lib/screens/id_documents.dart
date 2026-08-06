@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 
 class AdminFilesPage extends StatefulWidget {
   final String? parentFolderId;
@@ -25,6 +26,16 @@ class AdminFilesPage extends StatefulWidget {
 class _AdminFilesPageState extends State<AdminFilesPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<List<Map<String, dynamic>>> _fetchUsers() async {
     final snapshot = await _firestore.collection('admins').get();
@@ -44,24 +55,57 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.folderName),
+          title: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'بحث...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.white54),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                )
+              : Text(widget.folderName),
           centerTitle: true,
           actions: [
             IconButton(
-              icon: const Icon(Icons.create_new_folder),
-              onPressed: () => _showCreateFolderDialog(context),
-              tooltip: 'إنشاء مجلد',
+              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              onPressed: () {
+                setState(() {
+                  if (_isSearching) {
+                    _isSearching = false;
+                    _searchQuery = '';
+                    _searchController.clear();
+                  } else {
+                    _isSearching = true;
+                  }
+                });
+              },
+              tooltip: 'بحث',
             ),
-            IconButton(
-              icon: const Icon(Icons.drive_folder_upload, color: Colors.amber),
-              onPressed: () => _uploadFolderWithFiles(context),
-              tooltip: 'رفع مجلد مع ملفاته',
-            ),
-            IconButton(
-              icon: const Icon(Icons.upload_file),
-              onPressed: () => _uploadFile(context),
-              tooltip: 'رفع ملف',
-            ),
+            if (!_isSearching) ...[
+              IconButton(
+                icon: const Icon(Icons.create_new_folder),
+                onPressed: () => _showCreateFolderDialog(context),
+                tooltip: 'إنشاء مجلد',
+              ),
+              IconButton(
+                icon: const Icon(Icons.drive_folder_upload, color: Colors.amber),
+                onPressed: () => _uploadFolderWithFiles(context),
+                tooltip: 'رفع مجلد مع ملفاته',
+              ),
+              IconButton(
+                icon: const Icon(Icons.upload_file),
+                onPressed: () => _uploadFile(context),
+                tooltip: 'رفع ملف',
+              ),
+            ],
           ],
         ),
         drawer: widget.parentFolderId == null ? const AppDrawer() : null,
@@ -115,6 +159,15 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                     }
                   }
                 }
+              }
+
+              final name = (data['name'] ?? '').toString().toLowerCase();
+
+              if (_isSearching && _searchQuery.isNotEmpty) {
+                if (!name.contains(_searchQuery)) {
+                  return false;
+                }
+                return true; // Show in search results regardless of folder
               }
 
               final parentId = data['parent_id'];
@@ -176,10 +229,17 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                           onPressed: () =>
                               _showEditPrivacyDialog(context, docId, data),
                         ),
+                      if (UserSession().isAdmin || UserSession().isSecretaryModerator || UserSession().isAccountingModerator)
+                        IconButton(
+                          icon: const Icon(Icons.drive_file_move, color: Colors.blue),
+                          onPressed: () => _moveItem(docId, data),
+                          tooltip: 'نقل',
+                        ),
                       if (UserSession().isAdmin)
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () => _deleteItem(docId, data),
+                          tooltip: 'حذف',
                         ),
                     ],
                   ),
@@ -882,6 +942,150 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         }
       }
       await _firestore.collection('admin_files').doc(docId).delete();
+    }
+  }
+
+  Future<void> _moveItem(String docId, Map<String, dynamic> data) async {
+    final folderSnapshot = await _firestore
+        .collection('admin_files')
+        .where('type', isEqualTo: 'folder')
+        .get()
+        .timeout(const Duration(seconds: 10));
+
+    final folders = folderSnapshot.docs;
+    Map<String, String> folderPaths = {};
+    
+    String getFolderPathSafe(String id, List<String> visited) {
+      if (folderPaths.containsKey(id)) return folderPaths[id]!;
+      if (visited.contains(id)) return 'مسار دائري';
+      visited.add(id);
+
+      final docList = folders.where((f) => f.id == id).toList();
+      if (docList.isEmpty) return 'مجلد محذوف';
+
+      final fData = docList.first.data() as Map<String, dynamic>;
+      final parentId = fData['parent_id'];
+      final name = fData['name'] ?? 'بدون اسم';
+
+      if (parentId == null || parentId == '') {
+        folderPaths[id] = name;
+        return name;
+      } else {
+        final parentPath = getFolderPathSafe(parentId, visited);
+        final path = '$parentPath / $name';
+        folderPaths[id] = path;
+        return path;
+      }
+    }
+
+    for (var f in folders) {
+      getFolderPathSafe(f.id, []);
+    }
+
+    final folderList = folders.where((f) => f.id != docId).toList(); // Cannot move into itself
+    folderList.sort((a, b) => (folderPaths[a.id] ?? '').compareTo(folderPaths[b.id] ?? ''));
+
+    String? selectedFolderId = data['parent_id'];
+    if (selectedFolderId == '') selectedFolderId = null;
+
+    final bool? proceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('نقل العنصر'),
+            content: SizedBox(
+              width: 450,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('نقل "${data['name']}" إلى:'),
+                    const SizedBox(height: 10),
+                    DropdownSearch<String>(
+                      selectedItem: folderList.any((f) => f.id == selectedFolderId) ? selectedFolderId : '',
+                      compareFn: (i1, i2) => i1 == i2,
+                      items: (filter, loadProps) {
+                        final allItems = ['', ...folderList.map((f) => f.id)];
+                        if (filter.isEmpty) return allItems;
+                        return allItems.where((id) {
+                          final name = id == ''
+                              ? 'الرئيسية (الملفات الادارية)'
+                              : (folderPaths[id] ?? 'مجلد بدون اسم');
+                          return name.toLowerCase().contains(filter.toLowerCase());
+                        }).toList();
+                      },
+                      itemAsString: (String id) {
+                        if (id == '') return 'الرئيسية (الملفات الادارية)';
+                        return folderPaths[id] ?? 'مجلد بدون اسم';
+                      },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'بحث...',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                        ),
+                      ),
+                      decoratorProps: const DropDownDecoratorProps(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          selectedFolderId = val == '' ? null : val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('نقل'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (proceed == true) {
+      try {
+        await _firestore.collection('admin_files').doc(docId).update({
+          'parent_id': selectedFolderId,
+        }).timeout(const Duration(seconds: 10));
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم النقل بنجاح')),
+          );
+        }
+      } on FirebaseException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ في قاعدة البيانات: $e')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ غير متوقع: $e')),
+          );
+        }
+      }
     }
   }
 
