@@ -37,6 +37,28 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
     super.dispose();
   }
 
+  bool _isItemVisible(Map<String, dynamic> data) {
+    int? currentRole = UserSession().role;
+    String? currentName = UserSession().fullName;
+
+    if (currentRole != 3 && currentRole != 2) {
+      String privacyType = data['privacy_type'] ?? 'public';
+      if (privacyType == 'roles') {
+        List<dynamic> allowedRoles = data['allowed_roles'] ?? [];
+        if (currentRole == null || !allowedRoles.contains(currentRole)) return false;
+      } else if (privacyType == 'users') {
+        List<dynamic> allowedUsers = data['allowed_users'] ?? [];
+        if (currentName == null || !allowedUsers.contains(currentName)) return false;
+      } else {
+        if (data.containsKey('allowed_roles')) {
+          List<dynamic> allowedRoles = data['allowed_roles'] ?? [];
+          if (allowedRoles.isNotEmpty && (currentRole == null || !allowedRoles.contains(currentRole))) return false;
+        }
+      }
+    }
+    return true;
+  }
+
   Future<List<Map<String, dynamic>>> _fetchUsers() async {
     final snapshot = await _firestore.collection('admins').get();
     return snapshot.docs.map((doc) {
@@ -54,28 +76,40 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: Colors.grey[50],
         appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.green[700],
+          foregroundColor: Colors.white,
           title: _isSearching
-              ? TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'بحث...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.white54),
+              ? Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  style: const TextStyle(color: Colors.white),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'ابحث عن ملف أو مجلد...',
+                      hintStyle: TextStyle(color: Colors.white70),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                  ),
                 )
-              : Text(widget.folderName),
+              : Text(widget.folderName, style: const TextStyle(fontWeight: FontWeight.bold)),
           centerTitle: true,
           actions: [
             IconButton(
-              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
               onPressed: () {
                 setState(() {
                   if (_isSearching) {
@@ -87,28 +121,18 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                   }
                 });
               },
-              tooltip: 'بحث',
             ),
-            if (!_isSearching) ...[
-              IconButton(
-                icon: const Icon(Icons.create_new_folder),
-                onPressed: () => _showCreateFolderDialog(context),
-                tooltip: 'إنشاء مجلد',
-              ),
-              IconButton(
-                icon: const Icon(Icons.drive_folder_upload, color: Colors.amber),
-                onPressed: () => _uploadFolderWithFiles(context),
-                tooltip: 'رفع مجلد مع ملفاته',
-              ),
-              IconButton(
-                icon: const Icon(Icons.upload_file),
-                onPressed: () => _uploadFile(context),
-                tooltip: 'رفع ملف',
-              ),
-            ],
+            const SizedBox(width: 8),
           ],
         ),
         drawer: widget.parentFolderId == null ? const AppDrawer() : null,
+        floatingActionButton: !_isSearching && (UserSession().canEditOrDelete || UserSession().isAccounting || UserSession().isSecretary)
+            ? FloatingActionButton(
+                backgroundColor: Colors.green,
+                child: const Icon(Icons.add, color: Colors.white),
+                onPressed: () => _showAddOptions(context),
+              )
+            : null,
         body: StreamBuilder<QuerySnapshot>(
           stream: _firestore
               .collection('admin_files')
@@ -120,133 +144,214 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             }
 
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text('لا توجد ملفات أو مجلدات'));
+              return _buildEmptyState('لا توجد ملفات أو مجلدات هنا');
             }
 
-            // Filter manually to ensure no edge cases with null/empty parent_id
             final allDocs = snapshot.data!.docs;
             final docs = allDocs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
 
-              // Privacy check
-              int? currentRole = UserSession().role;
-              String? currentName = UserSession().fullName;
-
-              // Admin (3) and Moderator (2) can see everything
-              if (currentRole != 3 && currentRole != 2) {
-                String privacyType = data['privacy_type'] ?? 'public';
-                if (privacyType == 'roles') {
-                  List<dynamic> allowedRoles = data['allowed_roles'] ?? [];
-                  if (currentRole == null ||
-                      !allowedRoles.contains(currentRole)) {
-                    return false;
-                  }
-                } else if (privacyType == 'users') {
-                  List<dynamic> allowedUsers = data['allowed_users'] ?? [];
-                  if (currentName == null ||
-                      !allowedUsers.contains(currentName)) {
-                    return false;
-                  }
-                } else {
-                  // Fallback compatibility with old allowed_roles list
-                  if (data.containsKey('allowed_roles')) {
-                    List<dynamic> allowedRoles = data['allowed_roles'] ?? [];
-                    if (allowedRoles.isNotEmpty) {
-                      if (currentRole == null ||
-                          !allowedRoles.contains(currentRole)) {
-                        return false;
-                      }
-                    }
-                  }
-                }
-              }
+              if (!_isItemVisible(data)) return false;
 
               final name = (data['name'] ?? '').toString().toLowerCase();
 
               if (_isSearching && _searchQuery.isNotEmpty) {
-                if (!name.contains(_searchQuery)) {
-                  return false;
-                }
-                return true; // Show in search results regardless of folder
+                if (!name.contains(_searchQuery)) return false;
+                return true;
               }
 
               final parentId = data['parent_id'];
-
-              // Handle root level
               if (widget.parentFolderId == null) {
                 return parentId == null || parentId == '';
               }
-
-              // Handle nested level
               return parentId == widget.parentFolderId;
             }).toList();
 
             if (docs.isEmpty) {
-              return const Center(
-                  child: Text('هذا المجلد فارغ أو لا تملك صلاحية رؤيته'));
+              return _buildEmptyState(_isSearching ? 'لا توجد نتائج بحث مطابقة' : 'هذا المجلد فارغ');
             }
 
-            return ListView.builder(
-              itemCount: docs.length,
-              itemBuilder: (context, index) {
-                final data = docs[index].data() as Map<String, dynamic>;
-                final docId = docs[index].id;
-                final bool isFolder = data['type'] == 'folder';
-
-                return ListTile(
-                  leading: Icon(
-                    isFolder ? Icons.folder : _getFileIcon(data['name']),
-                    color: isFolder ? Colors.amber : Colors.blue,
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                int crossAxisCount = constraints.maxWidth > 800 ? 5 : (constraints.maxWidth > 500 ? 3 : 2);
+                return GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.85,
                   ),
-                  title: Text(data['name'] ?? 'بدون اسم'),
-                  subtitle: Text(
-                    'تاريخ الإضافة: ${intl.DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(data['created_at']))}',
-                  ),
-                  onTap: isFolder
-                      ? () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AdminFilesPage(
-                                parentFolderId: docId,
-                                folderName: data['name'],
-                              ),
-                            ),
-                          )
-                      : null,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!isFolder)
-                        IconButton(
-                          icon: const Icon(Icons.download),
-                          onPressed: () => _downloadFile(data['url']),
-                        ),
-                      if (UserSession().canEditOrDelete)
-                        IconButton(
-                          icon: const Icon(Icons.lock_outline,
-                              color: Colors.teal),
-                          tooltip: 'صلاحيات الرؤية',
-                          onPressed: () =>
-                              _showEditPrivacyDialog(context, docId, data),
-                        ),
-                      if (UserSession().isAdmin || UserSession().isSecretaryModerator || UserSession().isAccountingModerator)
-                        IconButton(
-                          icon: const Icon(Icons.drive_file_move, color: Colors.blue),
-                          onPressed: () => _moveItem(docId, data),
-                          tooltip: 'نقل',
-                        ),
-                      if (UserSession().isAdmin)
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteItem(docId, data),
-                          tooltip: 'حذف',
-                        ),
-                    ],
-                  ),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    final docId = docs[index].id;
+                    return _buildItemCard(context, docId, data);
+                  },
                 );
-              },
+              }
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_open, size: 80, color: Colors.green[200]),
+          const SizedBox(height: 16),
+          Text(message, style: TextStyle(fontSize: 16, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.create_new_folder, color: Colors.white)),
+                title: const Text('إنشاء مجلد جديد', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () { Navigator.pop(sheetContext); _showCreateFolderDialog(context); },
+              ),
+              ListTile(
+                leading: const CircleAvatar(backgroundColor: Colors.amber, child: Icon(Icons.drive_folder_upload, color: Colors.white)),
+                title: const Text('رفع مجلد مع ملفاته', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () { Navigator.pop(sheetContext); _uploadFolderWithFiles(context); },
+              ),
+              ListTile(
+                leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.upload_file, color: Colors.white)),
+                title: const Text('رفع ملف', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () { Navigator.pop(sheetContext); _uploadFile(context); },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(BuildContext context, String docId, Map<String, dynamic> data) {
+    final bool isFolder = data['type'] == 'folder';
+    final name = data['name'] ?? 'بدون اسم';
+    final date = data['created_at'] != null ? intl.DateFormat('yyyy-MM-dd').format(DateTime.parse(data['created_at'])) : '';
+
+    return InkWell(
+      onTap: isFolder
+          ? () => Navigator.push(context, MaterialPageRoute(builder: (context) => AdminFilesPage(parentFolderId: docId, folderName: name)))
+          : () => _downloadFile(data['url']),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Center(
+                child: Icon(isFolder ? Icons.folder : _getFileIcon(name), size: 64, color: isFolder ? Colors.amber[400] : Colors.green[300]),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                      InkWell(
+                        onTap: () => _showItemOptions(context, docId, data, isFolder),
+                        child: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(date, style: TextStyle(fontSize: 11, color: Colors.green[800])),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showItemOptions(BuildContext context, String docId, Map<String, dynamic> data, bool isFolder) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(data['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const Divider(),
+              if (!isFolder)
+                ListTile(
+                  leading: const Icon(Icons.download, color: Colors.green),
+                  title: const Text('تحميل'),
+                  onTap: () { Navigator.pop(sheetContext); _downloadFile(data['url']); },
+                ),
+              if (UserSession().canEditOrDelete || UserSession().isAccounting || UserSession().isSecretary)
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.green),
+                  title: const Text('إعادة التسمية'),
+                  onTap: () { Navigator.pop(sheetContext); _renameItem(docId, data['name'] ?? '', isFolder); },
+                ),
+              if (UserSession().canEditOrDelete)
+                ListTile(
+                  leading: const Icon(Icons.lock_outline, color: Colors.green),
+                  title: const Text('صلاحيات الرؤية'),
+                  onTap: () { Navigator.pop(sheetContext); _showEditPrivacyDialog(context, docId, data); },
+                ),
+              if (UserSession().isAdmin || UserSession().isSecretaryModerator || UserSession().isAccountingModerator || UserSession().isAccounting || UserSession().isSecretary)
+                ListTile(
+                  leading: const Icon(Icons.drive_file_move, color: Colors.green),
+                  title: const Text('نقل العنصر'),
+                  onTap: () { Navigator.pop(sheetContext); _moveItem(docId, data); },
+                ),
+              if (UserSession().isAdmin)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('حذف العنصر'),
+                  onTap: () { Navigator.pop(sheetContext); _deleteItem(docId, data); },
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -259,6 +364,64 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
     if (ext == 'docx' || ext == 'doc') return Icons.description;
     if (['jpg', 'jpeg', 'png', 'gif'].contains(ext)) return Icons.image;
     return Icons.insert_drive_file;
+  }
+
+  Future<void> _renameItem(String docId, String currentName, bool isFolder) async {
+    final TextEditingController nameController = TextEditingController(text: currentName);
+
+    final bool? shouldRename = await showDialog<bool>(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(isFolder ? 'إعادة تسمية المجلد' : 'إعادة تسمية الملف'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: 'الاسم الجديد',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldRename == true && nameController.text.trim().isNotEmpty && nameController.text.trim() != currentName) {
+      try {
+        await _firestore.collection('admin_files').doc(docId).update({
+          'name': nameController.text.trim(),
+        }).timeout(const Duration(seconds: 10));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تمت إعادة التسمية بنجاح')),
+          );
+        }
+      } on FirebaseException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ في الخدمة: ${e.message}')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('حدث خطأ غير متوقع: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildPrivacyWidget({
@@ -524,7 +687,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         .where('type', isEqualTo: 'folder')
         .get();
 
-    final folders = folderSnapshot.docs;
+    final folders = folderSnapshot.docs.where((doc) => _isItemVisible(doc.data() as Map<String, dynamic>)).toList();
 
     Map<String, String> folderPaths = {};
     String getFolderPathSafe(String id, List<String> visited) {
@@ -565,7 +728,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
     List<int> selectedRoles = [];
     List<String> selectedUsers = [];
 
-    final bool? proceed = await showDialog<bool>(
+    final FilePickerResult? pickedResult = await showDialog<FilePickerResult?>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Directionality(
@@ -581,33 +744,47 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                   children: [
                     const Text('اختر المجلد الوجهة:'),
                     const SizedBox(height: 10),
-                    DropdownButtonFormField<String?>(
-                      value: selectedFolderId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('الرئيسية (الملفات الادارية)'),
+                    DropdownSearch<String>(
+                      selectedItem: (selectedFolderId != null && folderList.any((f) => f.id == selectedFolderId)) ? selectedFolderId! : '',
+                      compareFn: (i1, i2) => i1 == i2,
+                      items: (filter, loadProps) {
+                        final allItems = ['', ...folderList.map((f) => f.id)];
+                        if (filter.isEmpty) return allItems;
+                        return allItems.where((id) {
+                          final name = id == ''
+                              ? 'الرئيسية (الملفات الادارية)'
+                              : (folderPaths[id] ?? 'مجلد بدون اسم');
+                          return name.toLowerCase().contains(filter.toLowerCase());
+                        }).toList();
+                      },
+                      itemAsString: (String id) {
+                        if (id == '') return 'الرئيسية (الملفات الادارية)';
+                        return folderPaths[id] ?? 'مجلد بدون اسم';
+                      },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'بحث...',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                          ),
                         ),
-                        ...folderList.map((f) {
-                          return DropdownMenuItem(
-                            value: f.id,
-                            child: Text(folderPaths[f.id] ?? 'مجلد بدون اسم'),
-                          );
-                        }),
-                      ],
+                      ),
+                      decoratorProps: const DropDownDecoratorProps(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                      ),
                       onChanged: (val) {
                         setDialogState(() {
-                          selectedFolderId = val;
-                          if (val == null) {
+                          selectedFolderId = val == '' ? null : val;
+                          if (selectedFolderId == null) {
                             selectedFolderName = 'الملفات الادارية';
                           } else {
                             selectedFolderName =
-                                folderPaths[val] ?? 'مجلد بدون اسم';
+                                folderPaths[selectedFolderId!] ?? 'مجلد بدون اسم';
                           }
                         });
                       },
@@ -628,11 +805,19 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(context, null),
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () async {
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['jpg', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
+                  );
+                  if (result != null) {
+                    Navigator.pop(context, result);
+                  }
+                },
                 child: const Text('اختيار الملف والرفع'),
               ),
             ],
@@ -641,16 +826,9 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
       ),
     );
 
-    if (proceed != true) return;
-
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
-    );
-
-    if (result != null && result.files.single.bytes != null) {
-      final fileBytes = result.files.single.bytes!;
-      final fileName = result.files.single.name;
+    if (pickedResult != null && pickedResult.files.single.bytes != null) {
+      final fileBytes = pickedResult.files.single.bytes!;
+      final fileName = pickedResult.files.single.name;
       final storagePath =
           'admin_files/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
@@ -688,7 +866,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         .where('type', isEqualTo: 'folder')
         .get();
 
-    final folders = folderSnapshot.docs;
+    final folders = folderSnapshot.docs.where((doc) => _isItemVisible(doc.data() as Map<String, dynamic>)).toList();
 
     Map<String, String> folderPaths = {};
     String getFolderPathSafe(String id, List<String> visited) {
@@ -730,7 +908,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
     List<int> selectedRoles = [];
     List<String> selectedUsers = [];
 
-    final bool? proceed = await showDialog<bool>(
+    final FilePickerResult? pickedResult = await showDialog<FilePickerResult?>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Directionality(
@@ -754,33 +932,47 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
                     const SizedBox(height: 15),
                     const Text('اختر المجلد الوجهة:'),
                     const SizedBox(height: 5),
-                    DropdownButtonFormField<String?>(
-                      value: selectedFolderId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('الرئيسية (الملفات الادارية)'),
+                    DropdownSearch<String>(
+                      selectedItem: (selectedFolderId != null && folderList.any((f) => f.id == selectedFolderId)) ? selectedFolderId! : '',
+                      compareFn: (i1, i2) => i1 == i2,
+                      items: (filter, loadProps) {
+                        final allItems = ['', ...folderList.map((f) => f.id)];
+                        if (filter.isEmpty) return allItems;
+                        return allItems.where((id) {
+                          final name = id == ''
+                              ? 'الرئيسية (الملفات الادارية)'
+                              : (folderPaths[id] ?? 'مجلد بدون اسم');
+                          return name.toLowerCase().contains(filter.toLowerCase());
+                        }).toList();
+                      },
+                      itemAsString: (String id) {
+                        if (id == '') return 'الرئيسية (الملفات الادارية)';
+                        return folderPaths[id] ?? 'مجلد بدون اسم';
+                      },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'بحث...',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                          ),
                         ),
-                        ...folderList.map((f) {
-                          return DropdownMenuItem(
-                            value: f.id,
-                            child: Text(folderPaths[f.id] ?? 'مجلد بدون اسم'),
-                          );
-                        }),
-                      ],
+                      ),
+                      decoratorProps: const DropDownDecoratorProps(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                      ),
                       onChanged: (val) {
                         setDialogState(() {
-                          selectedFolderId = val;
-                          if (val == null) {
+                          selectedFolderId = val == '' ? null : val;
+                          if (selectedFolderId == null) {
                             selectedFolderName = 'الملفات الادارية';
                           } else {
                             selectedFolderName =
-                                folderPaths[val] ?? 'مجلد بدون اسم';
+                                folderPaths[selectedFolderId!] ?? 'مجلد بدون اسم';
                           }
                         });
                       },
@@ -801,18 +993,25 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(context, null),
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (folderNameController.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('يرجى إدخال اسم المجلد')),
                     );
                     return;
                   }
-                  Navigator.pop(context, true);
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['jpg', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
+                    allowMultiple: true,
+                  );
+                  if (result != null) {
+                    Navigator.pop(context, result);
+                  }
                 },
                 child: const Text('اختيار الملفات والرفع'),
               ),
@@ -822,15 +1021,8 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
       ),
     );
 
-    if (proceed != true) return;
-
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
-      allowMultiple: true,
-    );
-
-    if (result != null && result.files.isNotEmpty) {
+    if (pickedResult != null && pickedResult.files.isNotEmpty) {
+      final result = pickedResult;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -952,7 +1144,7 @@ class _AdminFilesPageState extends State<AdminFilesPage> {
         .get()
         .timeout(const Duration(seconds: 10));
 
-    final folders = folderSnapshot.docs;
+    final folders = folderSnapshot.docs.where((doc) => _isItemVisible(doc.data() as Map<String, dynamic>)).toList();
     Map<String, String> folderPaths = {};
     
     String getFolderPathSafe(String id, List<String> visited) {
