@@ -91,34 +91,45 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
           paidAbsoluteMonths.addAll(paidAbsoluteMonthsByName[subName]!);
         }
 
+        // Extract subscription start date
+        DateTime createdAtDate = DateTime.now();
+        if (subData['created_at'] != null) {
+          try {
+            createdAtDate = DateTime.parse(subData['created_at'].toString());
+          } catch (e) {
+            // Default to current date if parsing fails
+          }
+        }
+        int startYear = createdAtDate.year;
+        int startMonth = createdAtDate.month;
+        int startAbsoluteMonth = (startYear * 12) + startMonth;
+
         // If they haven't paid THIS month, we consider them for this list
         if (!paidAbsoluteMonths.contains(currentAbsoluteMonth)) {
-          // Check disconnected status: unpaid for current and previous 3 months (> 3 months total)
-          bool isDisconnected = true;
-          for (int i = 0; i <= 3; i++) {
-            if (paidAbsoluteMonths.contains(currentAbsoluteMonth - i)) {
-              isDisconnected = false;
-              break;
-            }
-          }
-
-          // Compute unpaid months for past and current year (for display/print)
+          int consecutiveUnpaid = 0;
           List<String> unpaidMonthsDisplay = [];
 
-          // Past year
-          for (int m = 1; m <= 12; m++) {
-            if (!paidAbsoluteMonths.contains(((currentYear - 1) * 12) + m)) {
-              unpaidMonthsDisplay.add('$m/${currentYear - 1}');
+          for (int m = currentAbsoluteMonth; m >= startAbsoluteMonth; m--) {
+            if (!paidAbsoluteMonths.contains(m)) {
+              consecutiveUnpaid++;
+              int y = m ~/ 12;
+              int month = m % 12;
+              if (month == 0) {
+                y = y - 1;
+                month = 12;
+              }
+              
+              if (y == currentYear) {
+                unpaidMonthsDisplay.insert(0, '$month');
+              } else {
+                unpaidMonthsDisplay.insert(0, '$month/$y');
+              }
+            } else {
+              break; // Stop at the first paid month backwards
             }
           }
 
-          // Current year
-          for (int m = 1; m <= currentMonth; m++) {
-            if (!paidAbsoluteMonths.contains((currentYear * 12) + m)) {
-              unpaidMonthsDisplay
-                  .add('$m'); // display just the month for the current year
-            }
-          }
+          bool isDisconnected = consecutiveUnpaid > 3;
 
           unpaid.add({
             'docId': docId,
@@ -149,7 +160,7 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
   }
 
   List<Map<String, dynamic>> get _filteredSubs {
-    if (_filter == 'ThisMonthOnly') {
+    if (_filter == 'NotDisconnected' || _filter == 'ThisMonthOnly') {
       return allUnpaidSubs
           .where((sub) => sub['is_disconnected'] == false)
           .toList();
@@ -172,7 +183,9 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
     buffer.writeln(PrintStyle.htmlHead);
     buffer.writeln('<body>');
     String filterTitle = '';
-    if (_filter == 'ThisMonthOnly') filterTitle = ' - غير مسدد هذا الشهر';
+    if (_filter == 'NotDisconnected' || _filter == 'ThisMonthOnly') {
+      filterTitle = ' - غير منقطع';
+    }
     if (_filter == 'Disconnected') filterTitle = ' - منقطع';
 
     buffer.writeln(PrintStyle.getHeader(
@@ -245,8 +258,8 @@ class _UnpaidSubsPageState extends State<UnpaidSubsPage> {
                                 child: Text(
                                     'الكل (عرض جميع الكفالات غير المسددة)')),
                             DropdownMenuItem(
-                                value: 'ThisMonthOnly',
-                                child: Text('غير مسدد هذا الشهر (غير منقطع)')),
+                                value: 'NotDisconnected',
+                                child: Text('غير منقطع (من شهر إلى 3 أشهر)')),
                             DropdownMenuItem(
                                 value: 'Disconnected',
                                 child: Text('منقطع (أكثر من 3 أشهر)')),
